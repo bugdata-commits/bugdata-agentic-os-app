@@ -6,6 +6,10 @@ Build BUGDATA Agentic OS as a real managed web application, starting with a poli
 
 The scope comes from the complete product brief: website/funnel builder; CRM; marketing; sales agents; agent orchestration, task state and approvals; digital products and monetization; agents Kyla, Hermes, Marketing, Funnel and Analytics; a dashboard/business core/agent/integration architecture; and the stated MVP roadmap, with later commerce, memberships, affiliate, advanced marketing and white-label capabilities.
 
+## Public source and GitHub Pages boundary
+
+Keep the interactive React/Express/tRPC application, sign-in, database, and Hermes service on Manus. GitHub Pages is static hosting only, so publish `docs/` as a clearly labeled visual showcase using fictional sample data; never imply that login, database access, AI requests, approvals, or integrations operate on the Pages site. Keep Manus `origin/main` canonical and the public GitHub repository as the visible source and showcase host.
+
 ## Technical approach
 
 - Reuse the initialized React 19 + TypeScript + Vite/Tailwind frontend and Express/tRPC/Drizzle backend in `client/`, `server/`, `shared/` and `drizzle/`.
