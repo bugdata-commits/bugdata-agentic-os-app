@@ -18,6 +18,21 @@ async function startServer() {
   app.get("/api/platform/config.js", (_req, res) => {
     res.set("Cache-Control", "no-store").type("application/javascript").send(publicPlatformScript());
   });
+  app.get("/manus-routes.json", (_req, res) => {
+    res.set("Cache-Control", "no-cache").json({ routes: [
+      { path: "/", title: "Overview" },
+      { path: "/crm", title: "CRM" },
+      { path: "/agents", title: "Agents" },
+      { path: "/workflows", title: "Workflows" },
+      { path: "/approvals", title: "Approvals" },
+      { path: "/funnels", title: "Websites & funnels" },
+      { path: "/marketing", title: "Marketing" },
+      { path: "/analytics", title: "Analytics" },
+      { path: "/commerce", title: "Commerce" },
+      { path: "/integrations", title: "Integrations" },
+      { path: "/settings", title: "Settings" },
+    ] });
+  });
   registerOAuthRoutes(app);
   // tRPC API
   app.use(
