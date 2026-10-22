@@ -68,4 +68,4 @@
 - [ ] Provide useful responsive behavior for the operating dashboard and its core interactions.
 - [ ] Maintain an accurate route manifest; pass project diagnostics and applicable check/build/health checks.
 - [ ] Save the implementation as a canonical Manus checkpoint; do not imply production publication unless successful publication is confirmed.
-- [ ] Make the app source public and enable GitHub Pages for a clearly labeled static showcase; identify sample data as fictional and explain that sign-in, the backend, AI, persistence, and integrations remain on Manus.
+- [x] Make the app source public and enable GitHub Pages for a clearly labeled static showcase; identify sample data as fictional and explain that sign-in, the backend, AI, persistence, and integrations remain on Manus.
