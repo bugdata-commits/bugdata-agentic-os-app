@@ -5,7 +5,7 @@
 - **Authentication:** Supabase Auth with email/password sessions.
 - **Application API:** Express + tRPC, validating Supabase bearer tokens on every protected request.
 - **Business data:** Supabase PostgreSQL with workspace ownership and Row Level Security.
-- **Frontend hosting:** the managed application runtime; GitHub Pages remains a static showcase only.
+- **Frontend hosting:** GitHub Pages serves the Vite React build at `/bugdata-agentic-os-app/`.
 - **AI:** Hermes remains server-side and approval-gated.
 
 ## Required runtime configuration

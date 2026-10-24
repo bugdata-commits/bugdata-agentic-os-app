@@ -247,7 +247,8 @@ function ExpansionPage({ path, data, askHermes }: { path: string } & Pick<PagePr
 
 export default function Home({ user, onLogout }: { user: AppUser; onLogout: () => void | Promise<void> }) {
   const [location] = useLocation();
-  const snapshot = trpc.workspace.snapshot.useQuery(undefined, { retry: false });
+  const staticPages = typeof window !== "undefined" && window.location.hostname.endsWith("github.io");
+  const snapshot = trpc.workspace.snapshot.useQuery(undefined, { retry: false, enabled: !staticPages });
   const utils = trpc.useUtils();
   const onRefresh = () => { void utils.workspace.snapshot.invalidate(); };
   const createLead = trpc.workspace.createLead.useMutation({ onSuccess: onRefresh });
@@ -255,7 +256,10 @@ export default function Home({ user, onLogout }: { user: AppUser; onLogout: () =
   const createApproval = trpc.workspace.createApproval.useMutation({ onSuccess: onRefresh });
   const decideApproval = trpc.workspace.decideApproval.useMutation({ onSuccess: onRefresh });
   const askHermes = trpc.agent.askHermes.useMutation();
-  const data = snapshot.data;
+  const data = snapshot.data ?? (staticPages ? {
+    workspace: { id: "static", owner_id: user.id, name: `${user.name || "Your"}'s workspace`, slug: "static", plan: "free", created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+    leads: [], approvals: [], activities: [],
+  } as Snapshot : undefined);
   const displayName = user.name?.trim() || user.email?.split("@")[0] || "Workspace owner";
   const pendingCount = data?.approvals.filter(item => item.status === "pending").length ?? 0;
 

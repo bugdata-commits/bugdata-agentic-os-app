@@ -8,7 +8,7 @@ React / Express / tRPC / Drizzle application adapted from the Manus `web-db-user
 - **Source repository:** https://github.com/bugdata-commits/bugdata-agentic-os-app
 - **Interactive app:** the Manus-hosted web project and Preview.
 
-The GitHub Pages site is a static visual showcase with fictional sample data. It does not provide sign-in, saved CRM records, Hermes AI calls, approval execution, or external integrations. GitHub Pages cannot run this Express server or the managed database. The interactive application continues to use the Manus backend, Manus sign-in, managed MySQL, and built-in AI service.
+GitHub Pages serves the real React frontend built from `client/` under the repository base path. Supabase Auth and browser-safe Supabase configuration are available there; server-only Hermes procedures, privileged jobs, webhooks, and external integrations still require a separate server-capable deployment.
 
 ## Local development
 
@@ -21,4 +21,4 @@ Platform login, storage, payments, and service contracts are documented in the W
 
 ## Data and deployment
 
-The application uses protected server procedures and additive Drizzle migrations against the managed MySQL database. Development and production share that database, so schema work must be additive and data-safe. GitHub Pages publishes only `docs/`; the canonical interactive project and backend remain on Manus.
+The application uses Supabase Auth and RLS-scoped Supabase data access for the production frontend. GitHub Pages publishes the committed `docs/` Vite artifact, while the Express/tRPC server remains available for server-only capabilities.

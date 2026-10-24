@@ -1,0 +1,1 @@
+window.__MANUS_CONFIG__={"projectId":"","oauthPortalUrl":"","apiUrl":"","apiBrowserKey":"","supabaseUrl":"https://eeodzwzxpquqwtvccqab.supabase.co/rest/v1/","supabaseAnonKey":"sb_publishable_XfRxNZPVEiyPofK-mUXAKw_hfJueFXJ"};

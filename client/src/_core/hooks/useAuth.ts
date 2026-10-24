@@ -1,6 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { supabase } from "@/lib/supabase";
 import type { AuthError, Session } from "@supabase/supabase-js";
+import type { AppUser } from "@shared/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type UseAuthOptions = {
@@ -9,6 +10,7 @@ type UseAuthOptions = {
 };
 
 export function useAuth(_options?: UseAuthOptions) {
+  const staticPages = typeof window !== "undefined" && window.location.hostname.endsWith("github.io");
   const utils = trpc.useUtils();
   const [session, setSession] = useState<Session | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
@@ -34,7 +36,7 @@ export function useAuth(_options?: UseAuthOptions) {
   }, [utils]);
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
-    enabled: Boolean(session),
+    enabled: Boolean(session) && !staticPages,
     retry: false,
     refetchOnWindowFocus: false,
   });
@@ -67,14 +69,22 @@ export function useAuth(_options?: UseAuthOptions) {
     return result.data;
   }, []);
 
+  const staticUser: AppUser | null = session?.user ? {
+    id: session.user.id,
+    openId: session.user.id,
+    name: typeof session.user.user_metadata?.full_name === "string" ? session.user.user_metadata.full_name : session.user.email ?? null,
+    email: session.user.email ?? null,
+    role: session.user.app_metadata?.role === "admin" ? "admin" : "user",
+  } : null;
+
   return useMemo(() => ({
-    user: meQuery.data ?? null,
-    loading: sessionLoading || Boolean(session && meQuery.isLoading),
+    user: meQuery.data ?? (staticPages ? staticUser : null),
+    loading: sessionLoading || (!staticPages && Boolean(session && meQuery.isLoading)),
     error: authError ?? meQuery.error ?? null,
-    isAuthenticated: Boolean(session && meQuery.data),
+    isAuthenticated: Boolean(session && (staticPages ? staticUser : meQuery.data)),
     signIn,
     signUp,
     logout,
     refresh: () => meQuery.refetch(),
-  }), [authError, logout, meQuery.data, meQuery.error, meQuery.isLoading, meQuery.refetch, session, sessionLoading, signIn, signUp]);
+  }), [authError, logout, meQuery.data, meQuery.error, meQuery.isLoading, meQuery.refetch, session, sessionLoading, signIn, signUp, staticPages, staticUser]);
 }
