@@ -33,6 +33,8 @@ The live project is `bugdata-agentic-os` (`maadakjelhkbqgkbwxsy`). Applied migra
 1. `create_agentic_os_growth_schema`
 2. `harden_workspace_membership_rls`
 3. `add_workspace_activity_and_approval_records`
+4. `apply_safe_security_and_index_hardening`
+5. `isolate_rls_helpers_in_private_schema`
 
 Every application table has RLS enabled. New users receive a workspace on first authenticated access, and the database trigger adds the owner membership automatically.
 
