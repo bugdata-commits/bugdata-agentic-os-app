@@ -92,7 +92,7 @@
           </div>
         </section>
         <section class="section" id="sign-in" aria-labelledby="sign-in-title">
-          <div class="panel panel-pad"><div class="section-title"><div><div class="eyebrow"><code>06</code> PRIVATE WORKSPACE</div><h2 id="sign-in-title">Ready to run the real thing?</h2></div><span class="demo-chip">MANUS APP</span></div><p id="workspace-copy" style="margin:0;color:#858b80;font-size:10px;line-height:1.6;max-width:620px">Sign in is available in the interactive BUGDATA workspace, where your CRM records, agent drafts, and approval history stay private. This GitHub Pages showcase can also remember a demo profile in this browser.</p><div style="margin-top:14px"><button class="button" id="sign-in-panel-trigger" type="button">Continue to sign in <span class="arrow">↗</span></button></div></div>
+          <div class="panel panel-pad"><div class="section-title"><div><div class="eyebrow"><code>06</code> PRIVATE WORKSPACE</div><h2 id="sign-in-title">Ready to run the real thing?</h2></div><span class="demo-chip">SERVER-BACKED APP</span></div><p id="workspace-copy" style="margin:0;color:#858b80;font-size:10px;line-height:1.6;max-width:620px">The production sign-in is available only in the server-backed BUGDATA application. This GitHub Pages URL is a static product tour and cannot run Supabase Auth, save CRM data, or execute backend workflows.</p><div style="margin-top:14px"><button class="button" id="sign-in-panel-trigger" type="button">View demo boundary <span class="arrow">↗</span></button></div></div>
         </section>
         <aside class="note" aria-label="Important product boundary"><span class="note-mark">i</span><span><strong>Static showcase — not the live application.</strong><p>This GitHub Pages site is a visual tour built with fictional sample records. Secure sign-in, saved CRM data, Hermes AI requests, approvals, and integrations do not run here. The optional demo profile is stored only in your browser. The interactive app uses the Manus-hosted server and database.</p></span></aside>
         <footer class="footer"><span>BUGDATA AGENTIC OS · PUBLIC PRODUCT SHOWCASE</span><span><a href="https://github.com/bugdata-commits/bugdata-agentic-os-app">View source on GitHub ↗</a></span></footer>
@@ -101,13 +101,13 @@
   </div>
   <div class="modal-backdrop" id="sign-in-modal" hidden>
     <section class="sign-in-modal" role="dialog" aria-modal="true" aria-labelledby="sign-in-modal-title">
-      <div class="eyebrow"><code>DEMO AUTH / LOCAL ONLY</code></div>
-      <h2 id="sign-in-modal-title">Sign in to BUGDATA.</h2>
-      <p>This showcase uses a browser-only demo session. Your name and email are stored in <code>localStorage</code> on this device; no password or server account is created.</p>
+      <div class="eyebrow"><code>GITHUB PAGES / STATIC ONLY</code></div>
+      <h2 id="sign-in-modal-title">This is the product tour.</h2>
+      <p>You are viewing the GitHub Pages showcase, not the live application. The optional profile below is stored only in this browser. It does not create a Supabase account, save CRM records, or connect to the backend.</p>
       <form class="demo-auth-form" id="demo-auth-form">
         <label for="demo-name">Your name<input id="demo-name" name="name" required maxlength="80" autocomplete="name" placeholder="Jordan Lee"></label>
         <label for="demo-email">Email address<input id="demo-email" name="email" type="email" required maxlength="160" autocomplete="email" placeholder="jordan@company.com"></label>
-        <button class="button" type="submit" id="demo-auth-submit">Create demo session <span class="arrow">↗</span></button>
+        <button class="button" type="submit" id="demo-auth-submit">Explore demo profile <span class="arrow">↗</span></button>
       </form>
       <div class="auth-status" id="auth-status" hidden></div>
       <div class="sign-in-modal-actions"><button class="sign-out-button" id="demo-sign-out" type="button" hidden>Sign out</button><button class="modal-close" id="sign-in-modal-close" type="button">Close</button></div>
@@ -137,13 +137,13 @@
       const renderSession = () => {
         if (session && session.name && session.email) {
           topButton.classList.add('signed-in');
-          topButton.innerHTML = `Signed in · ${session.name.split(' ')[0]} <span>↗</span>`;
+          topButton.innerHTML = `Demo profile · ${session.name.split(' ')[0]} <span>↗</span>`;
           status.hidden = false;
-          status.textContent = `Demo session active for ${session.email}. Stored only in this browser.`;
+          status.textContent = `Demo profile active for ${session.email}. Stored only in this browser.`;
           signOut.hidden = false;
           form.hidden = true;
           workspaceCopy.classList.add('signed-in-copy');
-          workspaceCopy.textContent = `Demo session active for ${session.name}. Your browser remembers this profile; use the live Manus-hosted workspace for secure account data.`;
+          workspaceCopy.textContent = `Demo profile active for ${session.name}. Use the server-backed BUGDATA application for Supabase Auth and secure account data.`;
         } else {
           topButton.classList.remove('signed-in');
           topButton.innerHTML = 'Sign in <span>↗</span>';
@@ -151,7 +151,7 @@
           signOut.hidden = true;
           form.hidden = false;
           workspaceCopy.classList.remove('signed-in-copy');
-          workspaceCopy.textContent = 'Sign in is available in the interactive BUGDATA workspace, where your CRM records, agent drafts, and approval history stay private. This GitHub Pages showcase can also remember a demo profile in this browser.';
+          workspaceCopy.textContent = 'The production sign-in is available only in the server-backed BUGDATA application. This GitHub Pages URL is a static product tour and cannot run Supabase Auth, save CRM data, or execute backend workflows.';
         }
       };
       const openModal = () => { renderSession(); modal.hidden = false; (session ? close : nameInput).focus(); };
