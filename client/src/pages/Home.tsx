@@ -15,6 +15,7 @@ import type { AppRouter } from "../../../server/routers";
 import { trpc } from "@/lib/trpc";
 import WorkspaceShell from "@/components/bugdata/WorkspaceShell";
 import { Button } from "@/components/ui/button";
+import GrowthSuitePage from "@/pages/GrowthSuite";
 
 type Snapshot = inferRouterOutputs<AppRouter>["workspace"]["snapshot"];
 type Lead = Snapshot["leads"][number];
@@ -269,7 +270,8 @@ export default function Home({ user, onLogout }: { user: User; onLogout: () => v
     case "/agents": content = <AgentsPage askHermes={askHermes} createApproval={createApproval} />; break;
     case "/approvals": content = <ApprovalsPage data={data} decideApproval={decideApproval} />; break;
     case "/workflows": content = <WorkflowsPage data={data} askHermes={askHermes} />; break;
-    case "/funnels": case "/marketing": case "/analytics": case "/commerce": case "/integrations": case "/settings": content = <ExpansionPage path={location} data={data} askHermes={askHermes} />; break;
+    case "/funnels": case "/marketing": case "/automations": case "/analytics": case "/commerce": case "/courses": case "/bookings": case "/affiliates": content = <GrowthSuitePage path={location} data={data} />; break;
+    case "/integrations": case "/settings": content = <ExpansionPage path={location} data={data} askHermes={askHermes} />; break;
     default: content = <OverviewPage data={data} isLoading={snapshot.isLoading} onRefresh={onRefresh} />;
   }
   void props;

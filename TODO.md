@@ -69,3 +69,10 @@
 - [ ] Maintain an accurate route manifest; pass project diagnostics and applicable check/build/health checks.
 - [ ] Save the implementation as a canonical Manus checkpoint; do not imply production publication unless successful publication is confirmed.
 - [x] Make the app source public and enable GitHub Pages for a clearly labeled static showcase; identify sample data as fictional and explain that sign-in, the backend, AI, persistence, and integrations remain on Manus.
+
+## 10. Systeme.io-inspired frontend foundation
+
+- [x] Add navigable frontend surfaces for funnels, campaigns and email, automations, products and payments, courses and memberships, bookings, affiliates, and analytics.
+- [x] Add local design-mode interactions for funnel selection, campaign tabs, workflow toggles, progress views, booking availability, partner states, conversion charts, and guided create actions without pretending that external execution is live.
+- [x] Keep the existing CRM, Hermes, approvals, Manus authentication, and human-review boundary intact while making the new growth modules visually consistent with the BUGDATA control-room design.
+- [ ] Connect the growth-suite entities, permissions, payments, email delivery, course access, booking records, affiliate payouts, analytics events, and workflow execution to the future Supabase project.
