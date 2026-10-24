@@ -7,7 +7,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { createApproval, createLead, decideApproval, getWorkspaceSnapshot, updateLeadStatus } from "./db";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 
-const requestWindow = new Map<number, { start: number; count: number }>();
+const requestWindow = new Map<string, { start: number; count: number }>();
 const LEAD_STATUSES = ["new", "qualified", "proposal", "won", "lost"] as const;
 
 export const appRouter = router({
@@ -21,27 +21,27 @@ export const appRouter = router({
     }),
   }),
   workspace: router({
-    snapshot: protectedProcedure.query(({ ctx }) => getWorkspaceSnapshot(ctx.user.id, ctx.user.name)),
+    snapshot: protectedProcedure.query(({ ctx }) => getWorkspaceSnapshot(ctx.user.id, ctx.user.name, ctx.supabaseAccessToken!)),
     createLead: protectedProcedure.input(z.object({
       name: z.string().trim().min(1).max(160),
       email: z.string().trim().email().max(320),
       company: z.string().trim().max(160).optional(),
       title: z.string().trim().max(160).optional(),
       source: z.string().trim().max(100).optional(),
-    })).mutation(({ ctx, input }) => createLead(ctx.user.id, ctx.user.name, input)),
+    })).mutation(({ ctx, input }) => createLead(ctx.user.id, ctx.user.name, input, ctx.supabaseAccessToken!)),
     updateLeadStatus: protectedProcedure.input(z.object({
-      id: z.number().int().positive(),
+      id: z.string().uuid(),
       status: z.enum(LEAD_STATUSES),
-    })).mutation(({ ctx, input }) => updateLeadStatus(ctx.user.id, ctx.user.name, input.id, input.status)),
+    })).mutation(({ ctx, input }) => updateLeadStatus(ctx.user.id, ctx.user.name, input.id, input.status, ctx.supabaseAccessToken!)),
     createApproval: protectedProcedure.input(z.object({
       title: z.string().trim().min(1).max(200),
       description: z.string().trim().min(1).max(5000),
       agent: z.string().trim().min(1).max(80).default("Hermes"),
-    })).mutation(({ ctx, input }) => createApproval(ctx.user.id, ctx.user.name, input.title, input.description, input.agent)),
+    })).mutation(({ ctx, input }) => createApproval(ctx.user.id, ctx.user.name, input.title, input.description, input.agent, ctx.supabaseAccessToken!)),
     decideApproval: protectedProcedure.input(z.object({
-      id: z.number().int().positive(),
+      id: z.string().uuid(),
       status: z.enum(["approved", "rejected"]),
-    })).mutation(({ ctx, input }) => decideApproval(ctx.user.id, ctx.user.name, input.id, input.status)),
+    })).mutation(({ ctx, input }) => decideApproval(ctx.user.id, ctx.user.name, input.id, input.status, ctx.supabaseAccessToken!)),
   }),
   agent: router({
     askHermes: protectedProcedure.input(z.object({ prompt: z.string().trim().min(1).max(1600) })).mutation(async ({ ctx, input }) => {

@@ -1,137 +1,182 @@
-import { and, desc, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-import { approvals, activities, InsertUser, leads, LeadStatus, users, workspaces } from "../drizzle/schema";
-import { ENV } from "./_core/env";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { InsertUser, User } from "../drizzle/schema";
 
-let _db: ReturnType<typeof drizzle> | null = null;
+export type LeadStatus = "new" | "qualified" | "proposal" | "won" | "lost";
+export type ApprovalStatus = "pending" | "approved" | "rejected";
 
-export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
-    try {
-      _db = drizzle(process.env.DATABASE_URL);
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
-    }
-  }
-  return _db;
-}
-
-export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) throw new Error("User openId is required for upsert");
-  const db = await getDb();
-  if (!db) throw new Error("Database is not available");
-
-  const values: InsertUser = { openId: user.openId };
-  const updateSet: Record<string, unknown> = {};
-  const textFields = ["name", "email", "loginMethod"] as const;
-  for (const field of textFields) {
-    if (user[field] !== undefined) {
-      values[field] = user[field] ?? null;
-      updateSet[field] = user[field] ?? null;
-    }
-  }
-  if (user.lastSignedIn !== undefined) {
-    values.lastSignedIn = user.lastSignedIn;
-    updateSet.lastSignedIn = user.lastSignedIn;
-  }
-  if (user.role !== undefined) {
-    values.role = user.role;
-    updateSet.role = user.role;
-  } else if (user.openId === ENV.ownerOpenId) {
-    values.role = "admin";
-    updateSet.role = "admin";
-  }
-  values.lastSignedIn ??= new Date();
-  if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
-  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
-}
-
-export async function getUserByOpenId(openId: string) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-  return result[0];
-}
-
-async function ensureWorkspace(ownerId: number, ownerName?: string | null) {
-  const db = await getDb();
-  if (!db) throw new Error("Workspace storage is unavailable");
-  const firstName = ownerName?.trim().split(/\s+/)[0];
-  const defaultName = firstName ? `${firstName}'s workspace` : "My workspace";
-  await db.insert(workspaces).values({ ownerId, name: defaultName }).onDuplicateKeyUpdate({ set: { ownerId } });
-  const [workspace] = await db.select().from(workspaces).where(eq(workspaces.ownerId, ownerId)).limit(1);
-  if (!workspace) throw new Error("Workspace could not be loaded");
-  return workspace;
-}
-
-export async function getWorkspaceSnapshot(ownerId: number, ownerName?: string | null) {
-  const db = await getDb();
-  if (!db) throw new Error("Workspace storage is unavailable");
-  const workspace = await ensureWorkspace(ownerId, ownerName);
-  const [leadRows, approvalRows, activityRows] = await Promise.all([
-    db.select().from(leads).where(eq(leads.workspaceId, workspace.id)).orderBy(desc(leads.createdAt)).limit(100),
-    db.select().from(approvals).where(eq(approvals.workspaceId, workspace.id)).orderBy(desc(approvals.createdAt)).limit(50),
-    db.select().from(activities).where(eq(activities.workspaceId, workspace.id)).orderBy(desc(activities.createdAt)).limit(30),
-  ]);
-  return { workspace, leads: leadRows, approvals: approvalRows, activities: activityRows };
-}
-
-export type NewLeadInput = {
+export type AppWorkspace = {
+  id: string;
+  owner_id: string;
   name: string;
-  email: string;
-  company?: string;
-  title?: string;
-  source?: string;
+  slug: string;
+  plan: string;
+  created_at: string;
+  updated_at: string;
 };
 
-export async function createLead(ownerId: number, ownerName: string | null, input: NewLeadInput) {
-  const db = await getDb();
-  if (!db) throw new Error("Workspace storage is unavailable");
-  const workspace = await ensureWorkspace(ownerId, ownerName);
-  await db.insert(leads).values({
-    workspaceId: workspace.id,
-    name: input.name,
-    email: input.email,
-    company: input.company || null,
-    title: input.title || null,
-    source: input.source || "Manual entry",
-  });
-  await db.insert(activities).values({ workspaceId: workspace.id, actor: ownerName || "You", description: `Added ${input.name} to the CRM` });
-  const [created] = await db.select().from(leads).where(and(eq(leads.workspaceId, workspace.id), eq(leads.email, input.email))).orderBy(desc(leads.id)).limit(1);
-  return created;
+export type Lead = {
+  id: string;
+  workspaceId: string;
+  name: string;
+  email: string;
+  company: string | null;
+  title: string | null;
+  status: LeadStatus;
+  source: string | null;
+  value: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Approval = {
+  id: string;
+  workspaceId: string;
+  agent: string;
+  title: string;
+  description: string;
+  status: ApprovalStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Activity = {
+  id: string;
+  workspaceId: string;
+  actor: string;
+  description: string;
+  createdAt: string;
+};
+
+let serviceClient: SupabaseClient | null = null;
+
+function getSupabaseClient(accessToken?: string) {
+  const url = process.env.SUPABASE_URL ?? "";
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  const publishableKey = process.env.SUPABASE_ANON_KEY ?? process.env.SUPABASE_KEY ?? "";
+  if (!url || (!serviceRoleKey && !publishableKey)) throw new Error("Supabase is not configured. Set SUPABASE_URL and a server key.");
+  if (serviceRoleKey) {
+    if (serviceClient) return serviceClient;
+    serviceClient = createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
+    return serviceClient;
+  }
+  if (!accessToken) throw new Error("Supabase access token is required for an RLS-scoped request.");
+  return createClient(url, publishableKey, { global: { headers: { Authorization: `Bearer ${accessToken}` } }, auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
 }
 
-export async function updateLeadStatus(ownerId: number, ownerName: string | null, leadId: number, status: LeadStatus) {
-  const db = await getDb();
-  if (!db) throw new Error("Workspace storage is unavailable");
-  const workspace = await ensureWorkspace(ownerId, ownerName);
-  const [lead] = await db.select().from(leads).where(and(eq(leads.id, leadId), eq(leads.workspaceId, workspace.id))).limit(1);
-  if (!lead) return null;
-  await db.update(leads).set({ status }).where(and(eq(leads.id, leadId), eq(leads.workspaceId, workspace.id)));
-  await db.insert(activities).values({ workspaceId: workspace.id, actor: ownerName || "You", description: `Moved ${lead.name} to ${status}` });
-  const [updated] = await db.select().from(leads).where(and(eq(leads.id, leadId), eq(leads.workspaceId, workspace.id))).limit(1);
-  return updated;
+function assertNoError(error: { message?: string } | null, fallback: string) {
+  if (error) throw new Error(error.message || fallback);
 }
 
-export async function createApproval(ownerId: number, ownerName: string | null, title: string, description: string, agent = "Hermes") {
-  const db = await getDb();
-  if (!db) throw new Error("Workspace storage is unavailable");
-  const workspace = await ensureWorkspace(ownerId, ownerName);
-  await db.insert(approvals).values({ workspaceId: workspace.id, agent, title, description });
-  await db.insert(activities).values({ workspaceId: workspace.id, actor: agent, description: `Prepared “${title}” for your review` });
-  const [created] = await db.select().from(approvals).where(eq(approvals.workspaceId, workspace.id)).orderBy(desc(approvals.id)).limit(1);
-  return created;
+function slugify(value: string) {
+  return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50) || "workspace";
 }
 
-export async function decideApproval(ownerId: number, ownerName: string | null, approvalId: number, status: "approved" | "rejected") {
-  const db = await getDb();
-  if (!db) throw new Error("Workspace storage is unavailable");
-  const workspace = await ensureWorkspace(ownerId, ownerName);
-  const [approval] = await db.select().from(approvals).where(and(eq(approvals.id, approvalId), eq(approvals.workspaceId, workspace.id))).limit(1);
-  if (!approval || approval.status !== "pending") return null;
-  await db.update(approvals).set({ status }).where(and(eq(approvals.id, approvalId), eq(approvals.workspaceId, workspace.id)));
-  await db.insert(activities).values({ workspaceId: workspace.id, actor: ownerName || "You", description: `${status === "approved" ? "Approved" : "Rejected"} “${approval.title}”` });
-  const [updated] = await db.select().from(approvals).where(and(eq(approvals.id, approvalId), eq(approvals.workspaceId, workspace.id))).limit(1);
-  return updated;
+function fullName(firstName: string | null, lastName: string | null, email: string) {
+  const value = [firstName, lastName].filter(Boolean).join(" ").trim();
+  return value || email;
 }
+
+function mapLead(row: any): Lead {
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    name: fullName(row.first_name, row.last_name, row.email),
+    email: row.email,
+    company: row.company ?? null,
+    title: row.job_title ?? null,
+    status: (row.pipeline_status ?? "new") as LeadStatus,
+    source: row.source ?? null,
+    value: Number(row.pipeline_value ?? 0),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapApproval(row: any): Approval {
+  return { id: row.id, workspaceId: row.workspace_id, agent: row.agent, title: row.title, description: row.description, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+function mapActivity(row: any): Activity {
+  return { id: row.id, workspaceId: row.workspace_id, actor: row.actor, description: row.description, createdAt: row.created_at };
+}
+
+async function ensureWorkspace(ownerId: string, ownerName: string | null | undefined, accessToken: string) {
+  const supabase = getSupabaseClient(accessToken);
+  const existing = await supabase.from("workspaces").select("*").eq("owner_id", ownerId).order("created_at", { ascending: true }).limit(1).maybeSingle();
+  assertNoError(existing.error, "Workspace could not be loaded");
+  if (existing.data) return existing.data as AppWorkspace;
+
+  const name = ownerName?.trim() ? `${ownerName.trim().split(/\s+/)[0]}'s workspace` : "My workspace";
+  const baseSlug = slugify(name);
+  const created = await supabase.from("workspaces").insert({ owner_id: ownerId, name, slug: `${baseSlug}-${ownerId.slice(0, 8)}` }).select("*").single();
+  assertNoError(created.error, "Workspace could not be created");
+  if (!created.data) throw new Error("Workspace could not be created");
+  return created.data as AppWorkspace;
+}
+
+async function addActivity(workspaceId: string, actor: string, description: string, accessToken: string) {
+  const result = await getSupabaseClient(accessToken).from("workspace_activities").insert({ workspace_id: workspaceId, actor, description });
+  assertNoError(result.error, "Activity could not be recorded");
+}
+
+export async function getWorkspaceSnapshot(ownerId: string, ownerName: string | null | undefined, accessToken: string) {
+  const supabase = getSupabaseClient(accessToken);
+  const workspace = await ensureWorkspace(ownerId, ownerName, accessToken);
+  const [contacts, approvals, activities] = await Promise.all([
+    supabase.from("contacts").select("*").eq("workspace_id", workspace.id).order("created_at", { ascending: false }).limit(100),
+    supabase.from("agent_approvals").select("*").eq("workspace_id", workspace.id).order("created_at", { ascending: false }).limit(50),
+    supabase.from("workspace_activities").select("*").eq("workspace_id", workspace.id).order("created_at", { ascending: false }).limit(30),
+  ]);
+  assertNoError(contacts.error, "Contacts could not be loaded");
+  assertNoError(approvals.error, "Approvals could not be loaded");
+  assertNoError(activities.error, "Activity could not be loaded");
+  return { workspace, leads: (contacts.data ?? []).map(mapLead), approvals: (approvals.data ?? []).map(mapApproval), activities: (activities.data ?? []).map(mapActivity) };
+}
+
+export type NewLeadInput = { name: string; email: string; company?: string; title?: string; source?: string };
+
+export async function createLead(ownerId: string, ownerName: string | null, input: NewLeadInput, accessToken: string) {
+  const workspace = await ensureWorkspace(ownerId, ownerName, accessToken);
+  const [firstName, ...rest] = input.name.trim().split(/\s+/);
+  const result = await getSupabaseClient(accessToken).from("contacts").insert({ workspace_id: workspace.id, email: input.email.trim().toLowerCase(), first_name: firstName, last_name: rest.join(" ") || null, company: input.company || null, job_title: input.title || null, source: input.source || "Manual entry", pipeline_status: "new", pipeline_value: 0 }).select("*").single();
+  assertNoError(result.error, result.error?.code === "23505" ? "A contact with that email already exists in this workspace." : "Contact could not be created");
+  if (!result.data) throw new Error("Contact could not be created");
+  await addActivity(workspace.id, ownerName || "You", `Added ${input.name} to the CRM`, accessToken);
+  return mapLead(result.data);
+}
+
+export async function updateLeadStatus(ownerId: string, ownerName: string | null, leadId: string, status: LeadStatus, accessToken: string) {
+  const workspace = await ensureWorkspace(ownerId, ownerName, accessToken);
+  const existing = await getSupabaseClient(accessToken).from("contacts").select("*").eq("id", leadId).eq("workspace_id", workspace.id).maybeSingle();
+  assertNoError(existing.error, "Contact could not be loaded");
+  if (!existing.data) return null;
+  const updated = await getSupabaseClient(accessToken).from("contacts").update({ pipeline_status: status }).eq("id", leadId).eq("workspace_id", workspace.id).select("*").single();
+  assertNoError(updated.error, "Contact status could not be updated");
+  await addActivity(workspace.id, ownerName || "You", `Moved ${fullName(existing.data.first_name, existing.data.last_name, existing.data.email)} to ${status}`, accessToken);
+  return updated.data ? mapLead(updated.data) : null;
+}
+
+export async function createApproval(ownerId: string, ownerName: string | null, title: string, description: string, agent = "Hermes", accessToken: string) {
+  const workspace = await ensureWorkspace(ownerId, ownerName, accessToken);
+  const result = await getSupabaseClient(accessToken).from("agent_approvals").insert({ workspace_id: workspace.id, agent, title, description }).select("*").single();
+  assertNoError(result.error, "Approval could not be created");
+  if (!result.data) throw new Error("Approval could not be created");
+  await addActivity(workspace.id, agent, `Prepared “${title}” for your review`, accessToken);
+  return mapApproval(result.data);
+}
+
+export async function decideApproval(ownerId: string, ownerName: string | null, approvalId: string, status: Exclude<ApprovalStatus, "pending">, accessToken: string) {
+  const workspace = await ensureWorkspace(ownerId, ownerName, accessToken);
+  const existing = await getSupabaseClient(accessToken).from("agent_approvals").select("*").eq("id", approvalId).eq("workspace_id", workspace.id).eq("status", "pending").maybeSingle();
+  assertNoError(existing.error, "Approval could not be loaded");
+  if (!existing.data) return null;
+  const updated = await getSupabaseClient(accessToken).from("agent_approvals").update({ status }).eq("id", approvalId).eq("workspace_id", workspace.id).eq("status", "pending").select("*").single();
+  assertNoError(updated.error, "Approval could not be updated");
+  await addActivity(workspace.id, ownerName || "You", `${status === "approved" ? "Approved" : "Rejected"} “${existing.data.title}”`, accessToken);
+  return updated.data ? mapApproval(updated.data) : null;
+}
+
+// Legacy Manus OAuth compatibility exports. Supabase Auth is the active path;
+// these remain only so the retired OAuth modules can be removed independently.
+export async function upsertUser(_user: InsertUser): Promise<void> { return; }
+export async function getUserByOpenId(_openId: string): Promise<User | undefined> { return undefined; }

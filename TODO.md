@@ -76,3 +76,12 @@
 - [x] Add local design-mode interactions for funnel selection, campaign tabs, workflow toggles, progress views, booking availability, partner states, conversion charts, and guided create actions without pretending that external execution is live.
 - [x] Keep the existing CRM, Hermes, approvals, Manus authentication, and human-review boundary intact while making the new growth modules visually consistent with the BUGDATA control-room design.
 - [ ] Connect the growth-suite entities, permissions, payments, email delivery, course access, booking records, affiliate payouts, analytics events, and workflow execution to the future Supabase project.
+
+## 11. Supabase-native launch foundation
+
+- [x] Create the production Supabase project schema for workspaces, contacts, tags, funnels, funnel events, campaigns, campaign steps, campaign contacts, email events, approvals, and workspace activity.
+- [x] Replace active Manus session verification with Supabase Auth bearer-token verification and persistent browser sessions.
+- [x] Move the live CRM, workspace snapshot, approvals, and activity persistence path to Supabase UUID-backed records.
+- [x] Enforce tenant isolation with Supabase RLS and authenticated-token database requests; add automatic workspace-owner membership.
+- [x] Add a production launch runbook and a health endpoint that reports Supabase Auth configuration.
+- [ ] Configure production Auth redirect URLs, SMTP, and provider credentials; complete end-to-end multi-account isolation and provider tests before public launch.

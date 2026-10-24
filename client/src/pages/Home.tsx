@@ -9,7 +9,7 @@ import {
   TrendingUp, UsersRound, Workflow, X, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { User } from "../../../drizzle/schema";
+import type { AppUser } from "@shared/types";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../../server/routers";
 import { trpc } from "@/lib/trpc";
@@ -132,7 +132,7 @@ function OverviewPage({ data, isLoading, onRefresh }: Pick<PageProps, "data" | "
 function CRMPage({ data, onRefresh, createLead, updateLead }: Pick<PageProps, "data" | "onRefresh" | "createLead" | "updateLead">) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", company: "", title: "", source: "Manual entry" });
   const filtered = useMemo(() => data.leads.filter(lead => {
@@ -245,7 +245,7 @@ function ExpansionPage({ path, data, askHermes }: { path: string } & Pick<PagePr
   </div>;
 }
 
-export default function Home({ user, onLogout }: { user: User; onLogout: () => void | Promise<void> }) {
+export default function Home({ user, onLogout }: { user: AppUser; onLogout: () => void | Promise<void> }) {
   const [location] = useLocation();
   const snapshot = trpc.workspace.snapshot.useQuery(undefined, { retry: false });
   const utils = trpc.useUtils();
