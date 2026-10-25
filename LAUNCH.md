@@ -6,6 +6,8 @@
 - **Application API:** Express + tRPC, validating Supabase bearer tokens on every protected request.
 - **Business data:** Supabase PostgreSQL with workspace ownership and Row Level Security.
 - **Frontend hosting:** GitHub Pages serves the Vite React build at `/bugdata-agentic-os-app/`.
+- **Backend connection:** the frontend reads `BUGDATA_API_URL` from the public runtime config and sends tRPC requests to `${BUGDATA_API_URL}/api/trpc`.
+- **CORS:** Express allows `https://bugdata-commits.github.io` plus comma-separated `FRONTEND_ORIGINS` values.
 - **AI:** Hermes remains server-side and approval-gated.
 
 ## Required runtime configuration
@@ -16,6 +18,8 @@ Set these values in the production application runtime. Never put a service-role
 SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_ANON_KEY=<publishable-or-anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<server-only-service-role-key>
+BUGDATA_API_URL=https://api.example.com
+FRONTEND_ORIGINS=https://bugdata-commits.github.io
 MANUS_API_URL=<configured-platform-ai-url>
 MANUS_API_KEY=<server-only-platform-ai-key>
 ```
