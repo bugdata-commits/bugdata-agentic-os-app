@@ -41,6 +41,15 @@ export function useAuth(_options?: UseAuthOptions) {
     refetchOnWindowFocus: false,
   });
 
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      setAuthError(new Error("Your session expired. Please sign in again."));
+      void supabase.auth.signOut();
+    };
+    window.addEventListener("bugdata:auth-expired", handleAuthExpired);
+    return () => window.removeEventListener("bugdata:auth-expired", handleAuthExpired);
+  }, []);
+
   const logout = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;

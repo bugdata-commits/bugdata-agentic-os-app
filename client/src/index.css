@@ -82,6 +82,12 @@ a { color: inherit; text-decoration: none; }
 .topbar-command { display: flex; align-items: center; gap: 8px; height: 31px; padding: 0 9px; border: 1px solid #dfe1d6; border-radius: 6px; background: #fffefa; font-size: 10px; font-weight: 600; transition: border .16s, box-shadow .16s; }
 .topbar-command:hover { border-color: #c0d49a; box-shadow: 0 2px 8px #272f170d; }
 .topbar-command > svg { color: #71962c; }
+.topbar-account { display: flex; align-items: center; gap: 8px; min-height: 35px; padding: 3px 8px 3px 5px; border: 1px solid #dfe1d6; border-radius: 7px; background: #fffefa; color: var(--ink); text-align: left; transition: border .16s, box-shadow .16s, background .16s; }
+.topbar-account:hover { border-color: #c0d49a; background: #f6faee; box-shadow: 0 2px 8px #272f170d; }
+.topbar-account-avatar { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 50%; background: #eff5e6; color: #71962c; }
+.topbar-account-copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.topbar-account-copy strong { max-width: 130px; overflow: hidden; color: #3f443a; font-size: 10px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-account-copy small { color: #8b9185; font-size: 8px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 kbd { padding: 3px 5px; border: 1px solid #e7e8e0; border-radius: 4px; background: #f5f5ef; color: #91968b; font: 9px "IBM Plex Mono", ui-monospace, monospace; }
 .icon-button { border: 0; padding: 6px; display: inline-grid; place-items: center; color: #74796f; background: transparent; border-radius: 6px; }
 .icon-button:hover { color: var(--ink); background: #11111108; }
@@ -431,6 +437,7 @@ kbd { padding: 3px 5px; border: 1px solid #e7e8e0; border-radius: 4px; backgroun
   .breadcrumb-home { font-size: 8px; }.breadcrumb-home svg { display: none; }
   .breadcrumb-current { max-width: 125px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
   .topbar-command { height: 30px; padding: 0 7px; gap: 6px; }.topbar-command kbd { display: none; }.topbar-command span { font-size: 9px; }
+  .topbar-account { padding-right: 5px; }.topbar-account-copy { display: none; }
   .page-canvas { padding: 24px 14px 30px; }
   .welcome-row, .module-heading { align-items: flex-start; flex-direction: column; gap: 15px; }
   .welcome-row h1, .module-heading h1 { margin-top: 10px; font-size: 29px; }

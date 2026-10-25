@@ -61,6 +61,15 @@ function statusLabel(status: string) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+function mutationErrorMessage(error: unknown, fallback: string) {
+  const candidate = error as { message?: string; data?: { code?: string } } | null;
+  const message = candidate?.message?.trim();
+  if (candidate?.data?.code === "UNAUTHORIZED" || /10001|unauthorized|session|token|jwt/i.test(message || "")) {
+    return "Your session is not active. Use Sign out, then sign in again before saving changes.";
+  }
+  return message || fallback;
+}
+
 function MetricCard({ label, value, note, icon: Icon, tone = "ink" }: { label: string; value: string | number; note: string; icon: typeof UsersRound; tone?: string }) {
   return <article className="metric-card"><div className="metric-top"><span>{label}</span><span className={`metric-icon metric-${tone}`}><Icon size={16} /></span></div><div className="metric-value">{value}</div><div className="metric-note">{note}</div></article>;
 }
@@ -143,7 +152,7 @@ function CRMPage({ data, onRefresh, createLead, updateLead }: Pick<PageProps, "d
 
   function submitLead(event: FormEvent) {
     event.preventDefault();
-    createLead.mutate(form, { onSuccess: () => { setShowNew(false); setForm({ name: "", email: "", company: "", title: "", source: "Manual entry" }); toast.success("Lead added to your CRM"); onRefresh(); }, onError: error => toast.error(error.message) });
+    createLead.mutate(form, { onSuccess: () => { setShowNew(false); setForm({ name: "", email: "", company: "", title: "", source: "Manual entry" }); toast.success("Lead added to your CRM"); onRefresh(); }, onError: error => toast.error(mutationErrorMessage(error, "Lead could not be saved.")) });
   }
 
   return <div className="page-stack">

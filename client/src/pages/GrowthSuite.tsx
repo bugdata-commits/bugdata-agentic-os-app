@@ -90,7 +90,7 @@ function SuiteHeader({ path, onAction }: { path: SuitePath; onAction: () => void
 }
 
 function DemoNotice() {
-  return <div className="suite-demo-notice"><Sparkles size={15} /><span><strong>Local demo workspace.</strong> These controls use temporary browser state until the database is connected.</span><span className="suite-demo-status"><i /> DESIGN MODE</span></div>;
+  return <div className="suite-demo-notice"><Sparkles size={15} /><span><strong>Design preview.</strong> Create funnel opens the editor preview; saving, publishing, domains, and live conversion data are not connected yet.</span><span className="suite-demo-status"><i /> DESIGN MODE</span></div>;
 }
 
 function SectionHeading({ eyebrow, title, action }: { eyebrow: string; title: string; action?: ReactNode }) {
@@ -173,6 +173,6 @@ export default function GrowthSuitePage({ path, data }: SuiteProps) {
   void data;
   const suitePath = (metricsByPath[path as SuitePath] ? path : "/funnels") as SuitePath;
   const [notice, setNotice] = useState("");
-  const action = () => { setNotice(pageCopy[suitePath].action); toast.success(`${pageCopy[suitePath].action} opened in design mode`); };
+  const action = () => { setNotice(pageCopy[suitePath].action); toast.success(`${pageCopy[suitePath].action} opened in design mode — save and publish are coming next.`); };
   return <div className="page-stack"><SuiteHeader path={suitePath} onAction={action} /><MetricStrip path={suitePath} /><DemoNotice />{notice && <div className="suite-action-note"><Check size={15} /><span><strong>{notice}:</strong> Start with the mock editor below. Database persistence and external sending are intentionally reserved for the next phase.</span><button className="icon-button" onClick={() => setNotice("")}><span className="sr-only">Dismiss</span>×</button></div>}{suitePath === "/funnels" && <FunnelSuite />}{suitePath === "/marketing" && <MarketingSuite />}{suitePath === "/automations" && <AutomationSuite />}{suitePath === "/commerce" && <CommerceSuite />}{suitePath === "/courses" && <CoursesSuite />}{suitePath === "/bookings" && <BookingsSuite />}{suitePath === "/affiliates" && <AffiliatesSuite />}{suitePath === "/analytics" && <AnalyticsSuite />}<div className="roadmap-callout"><span className="roadmap-dot" /><p><strong>Honest status:</strong> This module is a polished frontend prototype. Save, send, publish, payment, and automation execution will connect to Supabase in the next phase.</p></div></div>;
 }

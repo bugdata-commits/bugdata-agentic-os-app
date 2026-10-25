@@ -25,7 +25,10 @@ const trpcClient = trpc.createClient({
         return data.session?.access_token ? { Authorization: `Bearer ${data.session.access_token}` } : {};
       },
       fetch(input, init) {
-        return globalThis.fetch(input, { ...(init ?? {}), credentials: "include" });
+        return globalThis.fetch(input, { ...(init ?? {}), credentials: "include" }).then(response => {
+          if (response.status === 401) window.dispatchEvent(new Event("bugdata:auth-expired"));
+          return response;
+        });
       },
     }),
   ],

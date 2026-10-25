@@ -19,6 +19,7 @@ import {
   PlugZap,
   Settings2,
   ShieldCheck,
+  UserRound,
   UsersRound,
   Workflow,
   X,
@@ -141,11 +142,15 @@ export default function WorkspaceShell({ children, displayName, leadCount, pendi
             <span className="breadcrumb-home"><Activity size={14} /> OPERATIONS</span>
             <span className="breadcrumb-divider">/</span>
             <span className="breadcrumb-current">{title}</span>
+            <Link href="/agents"><span className="topbar-command"><Command size={15} /><span>Talk to Hermes</span><kbd>⌘ K</kbd></span></Link>
           </div>
           <div className="topbar-actions">
             <span className="live-indicator"><i /> WORKSPACE LIVE</span>
-            <Link href="/agents"><span className="topbar-command"><Command size={15} /><span>Talk to Hermes</span><kbd>⌘ K</kbd></span></Link>
             <button className="icon-button topbar-help" aria-label="Help"><CircleHelp size={17} /></button>
+            <button className="topbar-account" onClick={onLogout} title="Sign out" aria-label={`Sign out ${displayName || "of BUGDATA"}`}>
+              <span className="topbar-account-avatar"><UserRound size={14} /></span>
+              <span className="topbar-account-copy"><strong>{displayName || "Account"}</strong><small>Sign out</small></span>
+            </button>
           </div>
         </header>
         <main className="page-canvas">{children}</main>
