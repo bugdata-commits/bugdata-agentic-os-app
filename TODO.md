@@ -75,7 +75,8 @@
 - [x] Add navigable frontend surfaces for funnels, campaigns and email, automations, products and payments, courses and memberships, bookings, affiliates, and analytics.
 - [x] Add local design-mode interactions for funnel selection, campaign tabs, workflow toggles, progress views, booking availability, partner states, conversion charts, and guided create actions without pretending that external execution is live.
 - [x] Keep the existing CRM, Hermes, approvals, Manus authentication, and human-review boundary intact while making the new growth modules visually consistent with the BUGDATA control-room design.
-- [ ] Connect the growth-suite entities, permissions, payments, email delivery, course access, booking records, affiliate payouts, analytics events, and workflow execution to the future Supabase project.
+- [x] Connect funnel drafts, ordered funnel steps, workspace activity logging, and protected create/list procedures to Supabase with RLS.
+- [ ] Connect campaigns, permissions, payments, email delivery, course access, booking records, affiliate payouts, analytics events, and workflow execution to Supabase/provider services.
 
 ## 11. Supabase-native launch foundation
 

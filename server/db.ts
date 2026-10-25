@@ -3,6 +3,9 @@ import type { InsertUser, User } from "../drizzle/schema";
 
 export type LeadStatus = "new" | "qualified" | "proposal" | "won" | "lost";
 export type ApprovalStatus = "pending" | "approved" | "rejected";
+export type FunnelStatus = "draft" | "published" | "archived";
+export type FunnelType = "lead_capture" | "sales" | "webinar" | "course_launch" | "booking" | "custom";
+export type FunnelStepType = "landing_page" | "opt_in" | "thank_you" | "sales_page" | "checkout" | "order_bump" | "upsell" | "downsell" | "booking" | "course_access" | "webinar" | "custom";
 
 export type AppWorkspace = {
   id: string;
@@ -45,6 +48,34 @@ export type Activity = {
   actor: string;
   description: string;
   createdAt: string;
+};
+
+export type FunnelStep = {
+  id: string;
+  funnelId: string;
+  position: number;
+  name: string;
+  stepType: FunnelStepType;
+  status: FunnelStatus;
+  path: string | null;
+  content: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Funnel = {
+  id: string;
+  workspaceId: string;
+  name: string;
+  slug: string;
+  funnelType: FunnelType;
+  status: FunnelStatus;
+  description: string | null;
+  settings: Record<string, unknown>;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  steps: FunnelStep[];
 };
 
 let serviceClient: SupabaseClient | null = null;
@@ -100,6 +131,14 @@ function mapActivity(row: any): Activity {
   return { id: row.id, workspaceId: row.workspace_id, actor: row.actor, description: row.description, createdAt: row.created_at };
 }
 
+function mapFunnelStep(row: any): FunnelStep {
+  return { id: row.id, funnelId: row.funnel_id, position: row.position, name: row.name, stepType: row.step_type, status: row.status, path: row.path ?? null, content: row.content ?? {}, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+function mapFunnel(row: any, steps: any[] = []): Funnel {
+  return { id: row.id, workspaceId: row.workspace_id, name: row.name, slug: row.slug, funnelType: row.funnel_type, status: row.status, description: row.description ?? null, settings: row.settings ?? {}, createdBy: row.created_by ?? null, createdAt: row.created_at, updatedAt: row.updated_at, steps: steps.map(mapFunnelStep) };
+}
+
 async function ensureWorkspace(ownerId: string, ownerName: string | null | undefined, accessToken: string) {
   const supabase = getSupabaseClient(accessToken);
   const existing = await supabase.from("workspaces").select("*").eq("owner_id", ownerId).order("created_at", { ascending: true }).limit(1).maybeSingle();
@@ -131,6 +170,44 @@ export async function getWorkspaceSnapshot(ownerId: string, ownerName: string | 
   assertNoError(approvals.error, "Approvals could not be loaded");
   assertNoError(activities.error, "Activity could not be loaded");
   return { workspace, leads: (contacts.data ?? []).map(mapLead), approvals: (approvals.data ?? []).map(mapApproval), activities: (activities.data ?? []).map(mapActivity) };
+}
+
+export async function getFunnels(ownerId: string, ownerName: string | null | undefined, accessToken: string) {
+  const supabase = getSupabaseClient(accessToken);
+  const workspace = await ensureWorkspace(ownerId, ownerName, accessToken);
+  const funnels = await supabase.from("funnels").select("*").eq("workspace_id", workspace.id).order("created_at", { ascending: false }).limit(100);
+  assertNoError(funnels.error, "Funnels could not be loaded");
+  const rows = funnels.data ?? [];
+  if (!rows.length) return [];
+  const steps = await supabase.from("funnel_steps").select("*").in("funnel_id", rows.map(row => row.id)).order("position", { ascending: true }).limit(500);
+  assertNoError(steps.error, "Funnel steps could not be loaded");
+  const stepsByFunnel = new Map<string, any[]>();
+  for (const step of steps.data ?? []) stepsByFunnel.set(step.funnel_id, [...(stepsByFunnel.get(step.funnel_id) ?? []), step]);
+  return rows.map(row => mapFunnel(row, stepsByFunnel.get(row.id) ?? []));
+}
+
+export type NewFunnelInput = {
+  name: string;
+  description?: string;
+  funnelType: FunnelType;
+  steps: Array<{ name: string; stepType: FunnelStepType; path?: string; content?: Record<string, unknown> }>;
+};
+
+export async function createFunnel(ownerId: string, ownerName: string | null | undefined, input: NewFunnelInput, accessToken: string) {
+  const supabase = getSupabaseClient(accessToken);
+  const workspace = await ensureWorkspace(ownerId, ownerName, accessToken);
+  const created = await supabase.from("funnels").insert({ workspace_id: workspace.id, name: input.name.trim(), slug: `${slugify(input.name)}-${Date.now().toString(36)}`, funnel_type: input.funnelType, status: "draft", description: input.description?.trim() || null, created_by: ownerId }).select("*").single();
+  assertNoError(created.error, "Funnel could not be created");
+  if (!created.data) throw new Error("Funnel could not be created");
+
+  const steps = input.steps.map((step, position) => ({ funnel_id: created.data.id, position, name: step.name.trim(), step_type: step.stepType, status: "draft", path: step.path?.trim() || null, content: step.content ?? {} }));
+  const createdSteps = await supabase.from("funnel_steps").insert(steps).select("*");
+  if (createdSteps.error) {
+    await supabase.from("funnels").delete().eq("id", created.data.id).eq("workspace_id", workspace.id);
+    throw new Error(createdSteps.error.message || "Funnel steps could not be created");
+  }
+  await addActivity(workspace.id, ownerName || "You", `Created funnel “${input.name.trim()}”`, accessToken);
+  return mapFunnel(created.data, createdSteps.data ?? []);
 }
 
 export type NewLeadInput = { name: string; email: string; company?: string; title?: string; source?: string };

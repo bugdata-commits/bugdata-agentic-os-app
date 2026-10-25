@@ -42,6 +42,8 @@ The live project is `bugdata-agentic-os` (`maadakjelhkbqgkbwxsy`). Applied migra
 
 Every application table has RLS enabled. New users receive a workspace on first authenticated access, and the database trigger adds the owner membership automatically.
 
+Funnels are now connected to the live data path: authenticated users can list their own funnels, create a draft with ordered starter steps, and see the activity entry in Supabase. Funnel publishing, custom page editing, domains, and live conversion event collection remain intentionally gated until those providers and workers are configured.
+
 ## Pre-launch verification
 
 1. `GET /api/health` returns HTTP 200 and `checks.supabaseAuth: true`.
@@ -50,8 +52,9 @@ Every application table has RLS enabled. New users receive a workspace on first 
 4. Add a contact, reload, and verify it persists.
 5. Move the contact through pipeline stages and verify activity history.
 6. Ask Hermes for a draft, create an approval, and approve/reject it.
-7. Test a second account and confirm it cannot see the first account's workspace.
-8. Configure email delivery, payment processing, calendar, and background automation providers before advertising those features as live.
+7. Create a funnel draft, refresh, and verify its ordered steps persist.
+8. Test a second account and confirm it cannot see the first account's workspace or funnels.
+9. Configure email delivery, payment processing, calendar, and background automation providers before advertising those features as live.
 
 ## Still intentionally gated
 

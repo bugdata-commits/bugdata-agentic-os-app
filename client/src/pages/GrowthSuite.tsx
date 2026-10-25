@@ -89,25 +89,52 @@ function SuiteHeader({ path, onAction }: { path: SuitePath; onAction: () => void
   return <section className="module-heading suite-heading"><div><div className="eyebrow"><span className="eyebrow-mark">OS</span> {copy.eyebrow}</div><h1>{copy.title}</h1><p>{copy.intro}</p></div><button className="primary-action" onClick={onAction}><Plus size={16} /> {copy.action} <ArrowRight size={15} /></button></section>;
 }
 
-function DemoNotice() {
-  return <div className="suite-demo-notice"><Sparkles size={15} /><span><strong>Design preview.</strong> Create funnel opens the editor preview; saving, publishing, domains, and live conversion data are not connected yet.</span><span className="suite-demo-status"><i /> DESIGN MODE</span></div>;
+function DemoNotice({ path }: { path: SuitePath }) {
+  return <div className="suite-demo-notice"><Sparkles size={15} /><span><strong>{path === "/funnels" ? "Private Supabase workspace." : "Design preview."}</strong> {path === "/funnels" ? "Funnel drafts save to your workspace. Publishing, domains, and live conversion data are still gated." : "These controls preview the next growth modules while their provider execution is wired."}</span><span className="suite-demo-status"><i /> {path === "/funnels" ? "CONNECTED" : "DESIGN MODE"}</span></div>;
 }
 
 function SectionHeading({ eyebrow, title, action }: { eyebrow: string; title: string; action?: ReactNode }) {
   return <div className="panel-title suite-section-heading"><div><div className="panel-eyebrow">{eyebrow}</div><h2>{title}</h2></div>{action}</div>;
 }
 
-function FunnelSuite() {
-  const [selected, setSelected] = useState("Lead magnet / Owner OS");
-  const funnels = [
-    { name: "Lead magnet / Owner OS", status: "LIVE PREVIEW", visitors: "1,208", leads: "318", conversion: "26.3%", steps: ["Opt-in page", "Thank-you", "Welcome email"] },
-    { name: "Course launch / Foundations", status: "DRAFT", visitors: "842", leads: "184", conversion: "21.8%", steps: ["Sales page", "Checkout", "Course access"] },
-    { name: "Consulting / Strategy call", status: "NEEDS REVIEW", visitors: "368", leads: "74", conversion: "20.1%", steps: ["Landing page", "Booking", "Confirmation"] },
-  ];
-  const funnel = funnels.find(item => item.name === selected) ?? funnels[0];
-  return <><section className="panel suite-panel"><SectionHeading eyebrow="FUNNEL LIBRARY" title="Your customer journeys" action={<button className="quiet-action"><Filter size={14} /> Filter</button>} /><div className="suite-funnel-list">{funnels.map(item => <button className={`suite-funnel-row ${item.name === selected ? "selected" : ""}`} key={item.name} onClick={() => setSelected(item.name)}><span className="suite-row-icon"><Layers3 size={16} /></span><span className="suite-row-main"><strong>{item.name}</strong><small>{item.steps.length} steps · Updated today</small></span><span className={`suite-status ${item.status === "LIVE PREVIEW" ? "suite-status-live" : item.status === "NEEDS REVIEW" ? "suite-status-warn" : ""}`}>{item.status}</span><span className="suite-row-number">{item.conversion}</span><ChevronRight size={15} /></button>)}</div></section><section className="suite-two-col"><article className="panel suite-panel"><SectionHeading eyebrow="FUNNEL MAP" title={funnel.name} action={<button className="icon-button" aria-label="More funnel options"><MoreHorizontal size={18} /></button>} /><div className="funnel-canvas">{funnel.steps.map((step, index) => <div className="funnel-step-wrap" key={step}><div className="funnel-step"><span className="funnel-step-index">0{index + 1}</span><div><strong>{step}</strong><small>{index === 0 ? "Entry point" : index === funnel.steps.length - 1 ? "Next action" : "Conversion step"}</small></div><ChevronRight size={15} /></div>{index < funnel.steps.length - 1 && <div className="funnel-connector"><span /></div>}</div>)}</div><div className="suite-footnote"><span><Play size={13} /> Preview journey</span><span>Draft changes require publish review</span></div></article><article className="panel suite-panel"><SectionHeading eyebrow="CONVERSION SNAPSHOT" title="What is working" /><div className="conversion-bars"><div><span><strong>Visitors</strong><b>{funnel.visitors}</b></span><i style={{ width: "100%" }} /></div><div><span><strong>Leads</strong><b>{funnel.leads}</b></span><i className="bar-blue" style={{ width: "46%" }} /></div><div><span><strong>Conversion</strong><b>{funnel.conversion}</b></span><i className="bar-amber" style={{ width: "26%" }} /></div></div><div className="suite-callout"><Target size={16} /><span><strong>Hermes suggestion</strong> Add a short proof block before the opt-in form to test a clearer trust signal.</span></div></article></section></>;
+function FunnelSuite({ createOpen, onOpenCreate, onCloseCreate }: { createOpen: boolean; onOpenCreate: () => void; onCloseCreate: () => void }) {
+  const utils = trpc.useUtils();
+  const funnelsQuery = trpc.workspace.funnels.useQuery(undefined, { retry: false });
+  const createFunnel = trpc.workspace.createFunnel.useMutation({
+    onSuccess: async () => {
+      await utils.workspace.funnels.invalidate();
+      onCloseCreate();
+      toast.success("Funnel saved to your private workspace");
+    },
+    onError: error => toast.error(error.message || "Funnel could not be created."),
+  });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const funnels = funnelsQuery.data ?? [];
+  const selected = funnels.find(item => item.id === selectedId) ?? funnels[0] ?? null;
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    createFunnel.mutate({
+      name,
+      description,
+      funnelType: "lead_capture",
+      steps: [
+        { name: "Landing page", stepType: "landing_page", path: "/" },
+        { name: "Opt-in form", stepType: "opt_in", path: "/join" },
+        { name: "Thank-you page", stepType: "thank_you", path: "/thanks" },
+      ],
+    });
+  };
+  return <>
+    <section className="panel suite-panel">
+      <SectionHeading eyebrow="FUNNEL LIBRARY" title="Your customer journeys" action={<button className="quiet-action" onClick={onCloseCreate}><Filter size={14} /> Filter</button>} />
+      {funnelsQuery.isLoading ? <div className="suite-empty-state">Loading your private funnels…</div> : funnelsQuery.isError ? <div className="suite-empty-state"><strong>Funnels could not be loaded.</strong><span>{funnelsQuery.error.message || "Please sign in again and retry."}</span><button className="quiet-action" onClick={() => void funnelsQuery.refetch()}>Retry</button></div> : funnels.length ? <div className="suite-funnel-list">{funnels.map(item => <button className={`suite-funnel-row ${item.id === selected?.id ? "selected" : ""}`} key={item.id} onClick={() => setSelectedId(item.id)}><span className="suite-row-icon"><Layers3 size={16} /></span><span className="suite-row-main"><strong>{item.name}</strong><small>{item.steps.length} steps · {item.status}</small></span><span className={`suite-status ${item.status === "published" ? "suite-status-live" : item.status === "draft" ? "" : "suite-status-warn"}`}>{item.status.toUpperCase()}</span><span className="suite-row-number">—</span><ChevronRight size={15} /></button>)}</div> : <div className="suite-empty-state"><Layers3 size={20} /><strong>No funnels yet.</strong><span>Create your first private funnel draft to begin mapping the customer journey.</span><button className="primary-action primary-action-small" onClick={onOpenCreate}><Plus size={14} /> Create funnel</button></div>}
+    </section>
+    {selected && <section className="suite-two-col"><article className="panel suite-panel"><SectionHeading eyebrow="FUNNEL MAP" title={selected.name} action={<span className="suite-status">{selected.status.toUpperCase()}</span>} /><div className="funnel-canvas">{selected.steps.map((step, index) => <div className="funnel-step-wrap" key={step.id}><div className="funnel-step"><span className="funnel-step-index">{String(index + 1).padStart(2, "0")}</span><div><strong>{step.name}</strong><small>{index === 0 ? "Entry point" : index === selected.steps.length - 1 ? "Next action" : "Conversion step"}</small></div><ChevronRight size={15} /></div>{index < selected.steps.length - 1 && <div className="funnel-connector"><span /></div>}</div>)}</div><div className="suite-footnote"><span><Play size={13} /> Draft journey</span><span>Publish review required</span></div></article><article className="panel suite-panel"><SectionHeading eyebrow="FUNNEL STATUS" title="Ready for your next step" /><div className="suite-callout"><Target size={16} /><span><strong>{selected.description || "Private funnel draft"}</strong> Add pages, forms, and connected providers before publishing.</span></div></article></section>}
+    {createOpen && <div className="modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onCloseCreate(); }}><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="funnel-create-title"><div className="modal-heading"><div><span className="panel-eyebrow">FUNNELS / NEW DRAFT</span><h2 id="funnel-create-title">Create a funnel</h2></div><button className="icon-button" onClick={onCloseCreate} aria-label="Close">×</button></div><p className="modal-intro">Create a private funnel draft in your Supabase workspace. Publishing and domains come later.</p><form className="lead-form" onSubmit={submit}><label>Funnel name<input autoFocus required maxLength={160} placeholder="e.g. Owner OS guide" value={name} onChange={event => setName(event.target.value)} /></label><label>Description<textarea maxLength={2000} placeholder="What should this journey help a customer do?" value={description} onChange={event => setDescription(event.target.value)} /></label><div className="modal-actions"><button type="button" className="secondary-action" onClick={onCloseCreate}>Cancel</button><button className="primary-action" type="submit" disabled={createFunnel.isPending}>{createFunnel.isPending ? "Saving…" : <><Plus size={15} /> Save funnel</>}</button></div></form></section></div>}
+  </>;
 }
-
 function MarketingSuite() {
   const [channel, setChannel] = useState("All content");
   const campaigns = [
@@ -173,6 +200,7 @@ export default function GrowthSuitePage({ path, data }: SuiteProps) {
   void data;
   const suitePath = (metricsByPath[path as SuitePath] ? path : "/funnels") as SuitePath;
   const [notice, setNotice] = useState("");
-  const action = () => { setNotice(pageCopy[suitePath].action); toast.success(`${pageCopy[suitePath].action} opened in design mode — save and publish are coming next.`); };
-  return <div className="page-stack"><SuiteHeader path={suitePath} onAction={action} /><MetricStrip path={suitePath} /><DemoNotice />{notice && <div className="suite-action-note"><Check size={15} /><span><strong>{notice}:</strong> Start with the mock editor below. Database persistence and external sending are intentionally reserved for the next phase.</span><button className="icon-button" onClick={() => setNotice("")}><span className="sr-only">Dismiss</span>×</button></div>}{suitePath === "/funnels" && <FunnelSuite />}{suitePath === "/marketing" && <MarketingSuite />}{suitePath === "/automations" && <AutomationSuite />}{suitePath === "/commerce" && <CommerceSuite />}{suitePath === "/courses" && <CoursesSuite />}{suitePath === "/bookings" && <BookingsSuite />}{suitePath === "/affiliates" && <AffiliatesSuite />}{suitePath === "/analytics" && <AnalyticsSuite />}<div className="roadmap-callout"><span className="roadmap-dot" /><p><strong>Honest status:</strong> This module is a polished frontend prototype. Save, send, publish, payment, and automation execution will connect to Supabase in the next phase.</p></div></div>;
+  const [createFunnelOpen, setCreateFunnelOpen] = useState(false);
+  const action = () => { if (suitePath === "/funnels") { setCreateFunnelOpen(true); return; } setNotice(pageCopy[suitePath].action); toast.success(`${pageCopy[suitePath].action} remains in design mode until its provider is connected.`); };
+  return <div className="page-stack"><SuiteHeader path={suitePath} onAction={action} /><MetricStrip path={suitePath} /><DemoNotice path={suitePath} />{notice && <div className="suite-action-note"><Check size={15} /><span><strong>{notice}:</strong> This module is still in design mode; persistence and external execution are intentionally gated.</span><button className="icon-button" onClick={() => setNotice("")}><span className="sr-only">Dismiss</span>×</button></div>}{suitePath === "/funnels" && <FunnelSuite createOpen={createFunnelOpen} onOpenCreate={() => setCreateFunnelOpen(true)} onCloseCreate={() => setCreateFunnelOpen(false)} />}{suitePath === "/marketing" && <MarketingSuite />}{suitePath === "/automations" && <AutomationSuite />}{suitePath === "/commerce" && <CommerceSuite />}{suitePath === "/courses" && <CoursesSuite />}{suitePath === "/bookings" && <BookingsSuite />}{suitePath === "/affiliates" && <AffiliatesSuite />}{suitePath === "/analytics" && <AnalyticsSuite />}<div className="roadmap-callout"><span className="roadmap-dot" /><p><strong>Honest status:</strong> {suitePath === "/funnels" ? "Funnels save private drafts to Supabase. Publishing and domains remain gated until their providers are configured." : "This module is a polished frontend prototype. Save, send, publish, payment, and automation execution will connect to Supabase in the next phase."}</p></div></div>;
 }

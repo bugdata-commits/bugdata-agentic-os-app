@@ -4,11 +4,13 @@ import { TRPCError } from "@trpc/server";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { ENV } from "./_core/env";
 import { systemRouter } from "./_core/systemRouter";
-import { createApproval, createLead, decideApproval, getWorkspaceSnapshot, updateLeadStatus } from "./db";
+import { createApproval, createFunnel, createLead, decideApproval, getFunnels, getWorkspaceSnapshot, updateLeadStatus } from "./db";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 
 const requestWindow = new Map<string, { start: number; count: number }>();
 const LEAD_STATUSES = ["new", "qualified", "proposal", "won", "lost"] as const;
+const FUNNEL_TYPES = ["lead_capture", "sales", "webinar", "course_launch", "booking", "custom"] as const;
+const FUNNEL_STEP_TYPES = ["landing_page", "opt_in", "thank_you", "sales_page", "checkout", "order_bump", "upsell", "downsell", "booking", "course_access", "webinar", "custom"] as const;
 
 export const appRouter = router({
   system: systemRouter,
@@ -22,6 +24,18 @@ export const appRouter = router({
   }),
   workspace: router({
     snapshot: protectedProcedure.query(({ ctx }) => getWorkspaceSnapshot(ctx.user.id, ctx.user.name, ctx.supabaseAccessToken!)),
+    funnels: protectedProcedure.query(({ ctx }) => getFunnels(ctx.user.id, ctx.user.name, ctx.supabaseAccessToken!)),
+    createFunnel: protectedProcedure.input(z.object({
+      name: z.string().trim().min(1).max(160),
+      description: z.string().trim().max(2000).optional(),
+      funnelType: z.enum(FUNNEL_TYPES).default("lead_capture"),
+      steps: z.array(z.object({
+        name: z.string().trim().min(1).max(160),
+        stepType: z.enum(FUNNEL_STEP_TYPES),
+        path: z.string().trim().max(240).optional(),
+        content: z.record(z.string(), z.unknown()).optional(),
+      })).min(1).max(20),
+    })).mutation(({ ctx, input }) => createFunnel(ctx.user.id, ctx.user.name, input, ctx.supabaseAccessToken!)),
     createLead: protectedProcedure.input(z.object({
       name: z.string().trim().min(1).max(160),
       email: z.string().trim().email().max(320),
