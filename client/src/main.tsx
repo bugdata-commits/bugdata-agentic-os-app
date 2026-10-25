@@ -18,7 +18,7 @@ queryClient.getMutationCache().subscribe(event => { if (event.type === "updated"
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
-      url: "/api/trpc",
+      url: `${(window.__MANUS_CONFIG__?.apiUrl || import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "")}/api/trpc`,
       transformer: superjson,
       async headers() {
         const { data } = await supabase.auth.getSession();

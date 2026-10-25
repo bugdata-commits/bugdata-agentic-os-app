@@ -1,1 +1,1 @@
-window.__MANUS_CONFIG__={"projectId":"","oauthPortalUrl":"","apiUrl":"","apiBrowserKey":"","supabaseUrl":"https://eeodzwzxpquqwtvccqab.supabase.co/rest/v1/","supabaseAnonKey":"sb_publishable_XfRxNZPVEiyPofK-mUXAKw_hfJueFXJ"};
+window.__MANUS_CONFIG__={"projectId":"","oauthPortalUrl":"","apiUrl":"https://3000-i1p1opsgw570n0yq5z47e-5242347f.us5.manus.computer","apiBrowserKey":"","supabaseUrl":"https://eeodzwzxpquqwtvccqab.supabase.co/rest/v1/","supabaseAnonKey":"sb_publishable_XfRxNZPVEiyPofK-mUXAKw_hfJueFXJ"};

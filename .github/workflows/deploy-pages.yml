@@ -35,11 +35,12 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          BUGDATA_API_URL: ${{ vars.BUGDATA_API_URL }}
         run: |
-          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ] && [ -n "$BUGDATA_API_URL" ]; then
             pnpm build:pages
           else
-            echo "Supabase Pages secrets are not configured; deploying the committed docs artifact."
+            echo "Pages runtime values are not configured; deploying the committed docs artifact."
           fi
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
