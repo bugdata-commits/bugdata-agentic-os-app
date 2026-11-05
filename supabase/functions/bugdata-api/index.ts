@@ -1,10 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.118.0";
-import { corsHeaders as supabaseCorsHeaders } from "npm:@supabase/supabase-js@2.118.0/cors";
-import { initTRPC, TRPCError } from "npm:@trpc/server@11.6.0";
-import { fetchRequestHandler } from "npm:@trpc/server@11.6.0/adapters/fetch";
-import superjson from "npm:superjson@1.13.3";
-import { z } from "npm:zod@4.1.12";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { corsHeaders as supabaseCorsHeaders } from "@supabase/supabase-js/cors";
+import { initTRPC, TRPCError } from "@trpc/server";
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import superjson from "superjson";
+import { z } from "zod";
 
 type AppUser = {
   id: string;
