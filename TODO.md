@@ -2,13 +2,13 @@
 
 ## Historical first-build record
 
-These results describe the original Manus OAuth/MySQL implementation, not the current Supabase-native branch. Re-verify current behavior after the Supabase connection is completed.
+These results describe the original Manus OAuth/MySQL implementation and are retained only as historical context; current deployment status is recorded in sections 11–12 and `PRODUCTION_VERIFICATION.md`.
 
 - [x] Responsive BUGDATA control-room shell with private sign-in and navigable dashboard/module surfaces; the first-build sign-in layout was inspected on desktop and phone.
 - [x] The initial version stored workspace, CRM leads, approvals and activity in additive Manus-managed MySQL tables, scoped by workspace. This is historical; current active business data is Supabase Postgres.
 - [x] The initial protected Hermes endpoint called the built-in Manus AI service, rate-limited requests and drafted actions without claiming external execution.
 - [x] The first version created, approved and rejected human-review records; an approval did not trigger external sending, purchasing or workflow execution.
-- [x] TypeScript, production build, app health, route manifest and anonymous workspace access were checked for the first version; these checks must be rerun after current backend changes.
+- [x] TypeScript, production build, app health, route manifest and anonymous workspace access were checked for the first version; the current Supabase implementation has also been rechecked as recorded in sections 11–12.
 
 ## 1. Business command center and workspace shell
 
@@ -68,9 +68,9 @@ These results describe the original Manus OAuth/MySQL implementation, not the cu
 - [ ] Preserve the initialized managed project and Supabase Auth conventions; keep development and published data safe.
 - [ ] Use the user's Supabase project for persistent application behavior where implemented, with additive migrations only; leave existing Manus MySQL data untouched.
 - [ ] Provide useful responsive behavior for the operating dashboard and its core interactions.
-- [ ] Maintain an accurate route manifest; pass project diagnostics and applicable check/build/health checks.
-- [ ] Save the implementation as a canonical Manus checkpoint before publishing; do not imply production publication unless successful publication is confirmed.
-- [ ] Serve the React application from the public GitHub Pages URL `https://bugdata-commits.github.io/bugdata-agentic-os-app/`, with Supabase Auth/Postgres connected to `bugdata-agentic-os` and tRPC pointed to the stable published API origin. Do not ship the stale `carfinder` project URL or an ephemeral Manus Preview host.
+- [x] Maintain an accurate route manifest; pass project diagnostics and applicable check/build/health checks.
+- [x] Save the implementation as a canonical Manus checkpoint before publishing; do not imply production publication unless successful publication is confirmed.
+- [x] Serve the React application from the public GitHub Pages URL `https://bugdata-commits.github.io/bugdata-agentic-os-app/`, with Supabase Auth/Postgres connected to `bugdata-agentic-os` and tRPC pointed to the stable published API origin. Do not ship the stale `carfinder` project URL or an ephemeral Manus Preview host.
 
 ## 10. Systeme.io-inspired frontend foundation
 
@@ -92,12 +92,12 @@ These results describe the original Manus OAuth/MySQL implementation, not the cu
 
 ## 12. Stable live backend connection
 
-- [ ] Configure every frontend/backend runtime to use the user's `bugdata-agentic-os` Supabase project URL and its public publishable key; the URL must be the project root, not `/rest/v1/`, and no value from another Supabase project may remain in the deployed Pages artifact.
+- [x] Configure every frontend/backend runtime to use the user's `bugdata-agentic-os` Supabase project URL and its public publishable key; the URL must be the project root, not `/rest/v1/`, and no value from another Supabase project may remain in the deployed Pages artifact.
 - [x] Verify the local Express API (Preview/development only) checks Supabase Auth tokens and uses each user's bearer token with the publishable key for database access, preserving RLS; never embed or use a Supabase service-role/secret key. Automated tests cover valid, missing and invalid bearer tokens.
 - [x] Deploy the production tRPC API as the Supabase Edge Function `bugdata-api` at `https://maadakjelhkbqgkbwxsy.supabase.co/functions/v1/bugdata-api`; preserve `system.health`, the active workspace snapshot and funnels, lead create/status, approval create/decision, and Hermes procedures. Keep Express/tRPC available only for local Preview/development.
 - [x] Keep each business-data procedure private to the signed-in Supabase user. Validate the caller's Supabase Auth access token inside the Edge Function; pass the same caller token and the public publishable key to Supabase queries so existing RLS remains enforced. Never use a service-role/secret key for normal workspace operations. Only non-sensitive health/identity responses may be unauthenticated.
-- [ ] Set the GitHub Pages production API base to the Supabase Function URL, send the project publishable key as `apikey` and the user's access token as `Authorization`, and allow `https://bugdata-commits.github.io` through the API CORS policy. Remove the retired Manus API and all Preview-only URLs from the published build.
-- [ ] Ensure the Pages app is built for `/bugdata-agentic-os-app/` and Supabase email confirmation returns to that path; expose a non-sensitive API health response and ensure anonymous requests cannot read or mutate workspace data.
+- [x] Set the GitHub Pages production API base to the Supabase Function URL, send the project publishable key as `apikey` and the user's access token as `Authorization`, and allow `https://bugdata-commits.github.io` through the API CORS policy. Remove the retired Manus API and all Preview-only URLs from the published build.
+- [x] Ensure the Pages app is built for `/bugdata-agentic-os-app/` and Supabase email confirmation returns to that path; expose a non-sensitive API health response and ensure anonymous requests cannot read or mutate workspace data. The user confirmed the Site URL and redirect settings were saved; SMTP and the first real confirmation-email delivery remain open above.
 - [x] Keep Hermes disabled until a user-owned OpenAI-compatible provider key is configured in Supabase Function secrets; accept optional `HERMES_API_URL` and `HERMES_MODEL` provider settings (default model `gpt-4o-mini`); keep the key out of source and browser output, and clearly report when Hermes is not configured.
 - [x] Use Supabase Free with the user's accepted inactivity-pause risk; explain that inactivity may pause the database/API and that this is not an always-on guarantee. Production business data/API no longer depends on Manus server hosting; Hermes availability additionally depends on a user-owned AI provider key and service.
-- [ ] Save a canonical Manus checkpoint and synchronize the intended commit to the public GitHub `main`; confirm the API publication and Pages build before describing the live app as working.
+- [x] Save a canonical Manus checkpoint and synchronize the intended commit to the public GitHub `main`; confirm the API publication and Pages build before describing the live app as working.
