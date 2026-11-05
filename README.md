@@ -1,24 +1,31 @@
 # BUGDATA Agentic OS
 
-React / Express / tRPC / Drizzle application adapted from the Manus `web-db-user` template.
+BUGDATA is a React/TypeScript application with an Express/tRPC development server and a Supabase Edge Function production API. The public source repository is [bugdata-agentic-os-app](https://github.com/bugdata-commits/bugdata-agentic-os-app).
 
-## View the product
+## Architecture and hosting
 
-- **Public GitHub Pages showcase:** https://bugdata-commits.github.io/bugdata-agentic-os-app/
-- **Source repository:** https://github.com/bugdata-commits/bugdata-agentic-os-app
-- **Interactive app:** the Manus-hosted web project and Preview.
+The React frontend is built for GitHub Pages at `https://bugdata-commits.github.io/bugdata-agentic-os-app/`. Supabase project `bugdata-agentic-os` provides email/password identity, PostgreSQL persistence, and the production API at `https://maadakjelhkbqgkbwxsy.supabase.co/functions/v1/bugdata-api`. The Express/tRPC server is retained for local Manus Preview and development; production Pages must not depend on it or on a Preview URL.
 
-GitHub Pages serves the real React frontend built from `client/` under the repository base path. Supabase Auth and browser-safe Supabase configuration are available there; server-only Hermes procedures, privileged jobs, webhooks, and external integrations still require a separate server-capable deployment.
+The Supabase project URL and `sb_publishable_...` key in `shared/supabaseConfig.ts` are intentionally public values. The app sends the publishable key as `apikey` and the signed-in user's JWT as `Authorization`. The Edge Function checks the project key, validates the user token with Supabase Auth, and uses that same token for database calls, so Supabase RLS controls workspace access. Gateway JWT verification is disabled only because the function also exposes safe unauthenticated identity/health responses; every protected procedure still requires a valid signed-in Supabase user. Do not add a service-role/secret key to the frontend, source, workflow, or normal workspace-data path. The existing Manus MySQL tables are legacy and are not the active BUGDATA identity or business-data store.
+
+Hermes is disabled in production until a user-owned OpenAI-compatible provider key is configured in Supabase Function secrets (`HERMES_API_KEY`; `HERMES_API_URL` is optional, and `HERMES_MODEL` defaults to `gpt-4o-mini`). The key never belongs in the public repository or browser bundle. Supabase Free inactivity pauses are an accepted risk; this does not promise always-on availability.
+
+## Supabase Auth launch settings
+
+Before opening account creation to the public, set the Supabase Auth Site URL and allowed redirect URL to `https://bugdata-commits.github.io/bugdata-agentic-os-app/`. The app requests email confirmation back to this exact Pages path. Configure a reliable production SMTP provider for confirmation messages; the default project email sender is for limited testing, not general production delivery.
 
 ## Local development
 
-- `pnpm dev`: development server; honors `PORT` (default 3000).
+- `pnpm dev`: run the Express/Vite development application on `PORT` (default 3000).
 - `pnpm build` / `pnpm start`: build and serve `dist/index.js` and `dist/public/`.
-- `pnpm db:migrate`: apply checked-in migrations. `pnpm db:push`: generate and apply schema changes.
+- `pnpm build:pages`: build the static GitHub Pages frontend under the repository base path.
 - `pnpm check` / `pnpm test`: type-check and run application tests.
+- Apply Supabase SQL changes from the checked-in `supabase/migrations/` directory to the intended project. The legacy `pnpm db:push` / Drizzle files target the old MySQL starter and must not be used to reset or modify the Supabase schema.
 
-Platform login, storage, payments, and service contracts are documented in the Webdev skill's shared references. `server/_core/publicConfig.ts` exposes only named public runtime values; private keys stay server-side. The platform serves managed `/manus-storage/` assets.
+The production Edge Function verifies Supabase bearer tokens and forwards the authenticated user's token to Supabase. Initial workspace creation goes through the authenticated `bugdata_ensure_workspace_for_current_user(text)` RPC, allowing the existing RLS policy to add owner membership safely. CORS allows the public Pages origin and local development only. The function exposes a non-sensitive `/health` response; no API operation uses a service-role key.
 
-## Data and deployment
+## Supabase Edge Function references
 
-The application uses Supabase Auth and RLS-scoped Supabase data access for the production frontend. GitHub Pages publishes the committed `docs/` Vite artifact, while the Express/tRPC server remains available for server-only capabilities.
+- [Managing dependencies](https://supabase.com/docs/guides/functions/dependencies) recommends a function-local `deno.json` for npm/Deno dependency configuration.
+- [CORS support](https://supabase.com/docs/guides/functions/cors) documents the SDK-maintained CORS header list; the function adds its tRPC request header and restricts allowed origins.
+- [Securing Edge Functions](https://supabase.com/docs/guides/functions/auth) explains the distinction between a publishable application key and a signed-in user's JWT. This function performs user verification itself before protected procedures.

@@ -2,25 +2,32 @@
 
 ## Objective and first delivery
 
-Build BUGDATA Agentic OS as a real managed web application, starting with a polished, usable command-center MVP: business overview, lead CRM, a real Hermes assistant using the project’s built-in LLM service, agent roster, human approval queue, workflow and activity surfaces. Provide the broader requested product modules (funnels, marketing, analytics, monetization, and integrations) as intentional, navigable product surfaces so the first release has a coherent OS structure. Clearly distinguish what works in this delivery from areas that still need provider setup or deeper implementation. Do not represent inactive integrations or billing as connected or live.
+Build BUGDATA Agentic OS as a real managed web application, starting with a polished, usable command-center MVP: business overview, lead CRM, Hermes as an orchestration interface whose production AI remains gated until a user-owned provider is configured, agent roster, human approval queue, workflow and activity surfaces. Provide the broader requested product modules (funnels, marketing, analytics, monetization, and integrations) as intentional, navigable product surfaces so the first release has a coherent OS structure. Clearly distinguish what works in this delivery from areas that still need provider setup or deeper implementation. Do not represent inactive integrations or billing as connected or live.
 
 The scope comes from the complete product brief: website/funnel builder; CRM; marketing; sales agents; agent orchestration, task state and approvals; digital products and monetization; agents Kyla, Hermes, Marketing, Funnel and Analytics; a dashboard/business core/agent/integration architecture; and the stated MVP roadmap, with later commerce, memberships, affiliate, advanced marketing and white-label capabilities.
 
 ## Public source and GitHub Pages boundary
 
-Keep the interactive React/Express/tRPC application, sign-in, database, and Hermes service on Manus. GitHub Pages is static hosting only, so publish `docs/` as a clearly labeled visual showcase using fictional sample data; never imply that login, database access, AI requests, approvals, or integrations operate on the Pages site. Keep Manus `origin/main` canonical and the public GitHub repository as the visible source and showcase host.
+The public GitHub repository is the visible source. GitHub Pages serves the real React frontend from `docs/`; it is static hosting and calls the Supabase Edge Function API over HTTPS. Supabase project `bugdata-agentic-os` provides Auth, durable PostgreSQL, and the production API. The app must not use the other Supabase project referenced by an old Pages artifact.
+
+The frontend signs users in with Supabase Auth. The `bugdata-api` Edge Function validates each user's access token with Supabase Auth and makes PostgREST calls using that same token and the public publishable key, so database Row Level Security remains the tenant boundary. Keep the Edge Gateway's `verify_jwt` off only because the function also exposes safe health and identity responses; inside the handler, match the project `apikey` and call Supabase Auth `getUser` before any protected tRPC operation. The publishable key identifies the application but never substitutes for a user session. Do not use Manus OAuth or a Supabase service-role key for app requests. First-workspace onboarding must call the existing authenticated `bugdata_ensure_workspace_for_current_user(text)` function; direct first-owner inserts are blocked by the current RLS policy.
+
+Keep Express/tRPC only for local Manus Preview and development. Production Pages calls `https://maadakjelhkbqgkbwxsy.supabase.co/functions/v1/bugdata-api/api/trpc`; configure CORS for `https://bugdata-commits.github.io` and send both the public publishable key as `apikey` and the signed-in user's access token as `Authorization`. The Pages build contains only the Supabase project URL, its public publishable key, and the API origin; never ship a Manus API or ephemeral Preview URL. Hermes is disabled in production until a user-owned OpenAI-compatible provider key is configured in Supabase Function secrets. The API must report that state clearly and never claim a draft was produced when no provider is configured. The production Site URL and exact confirmation redirect URL must match the Pages origin and repository path. Supabase Free may pause after inactivity; this is accepted, not an always-on guarantee.
+
+Keep `origin/main` as the canonical Manus checkpoint branch and `github/main` as the public source/Pages branch; synchronize intended changes to both without rewriting history.
 
 ## Technical approach
 
-- Reuse the initialized React 19 + TypeScript + Vite/Tailwind frontend and Express/tRPC/Drizzle backend in `client/`, `server/`, `shared/` and `drizzle/`.
+- Reuse the initialized React 19 + TypeScript + Vite/Tailwind frontend and Express/tRPC backend in `client/`, `server/` and `shared/`; preserve the existing MySQL tables and data without using them for active BUGDATA sign-in or business records.
 - Build a responsive, multi-section workspace with Wouter navigation and Lucide icons. Prioritize a dashboard, contacts/CRM, agent control, workflows, approvals, marketing, funnels, analytics and commerce in the navigation. Keep the main interactions visible and usable on narrow screens.
 - Use a distinctive control-room visual language rather than a generic SaaS template: asymmetric workspace, dark ink sidebar, warm paper work surface, signal-green action color, crisp status chips, thin rules, compact metrics and occasional oversized typographic section labels.
-- Use existing platform authentication, protected server procedures and the managed MySQL database for business data where wired. Extend Drizzle additively; never drop or reset existing data. A development migration affects the same project database as publication.
-- Implement a Hermes command endpoint on the server using `MANUS_API_URL` and `MANUS_API_KEY`, calling the built-in OpenAI-compatible `/v1/chat/completions` endpoint. Keep credentials server-side. Hermes may summarize and draft suggested plans; consequential operations become explicit approval requests and are not executed automatically. Handle service errors/empty output honestly.
+- Use Supabase Auth instead of Manus OAuth, and use the existing Supabase PostgreSQL tables for workspaces, contacts, funnels, approvals and activities. Send the signed-in user's access token to each server procedure and rely on RLS. Check in the workspace-onboarding migration; never drop or reset data.
+- Implement Hermes on the Edge Function using a user-owned OpenAI-compatible provider configured through Supabase Function secrets (`HERMES_API_KEY`, optional `HERMES_API_URL`). Never bundle the credential. Until it is set, return a clear not-configured response and show Hermes as requiring setup. Hermes may summarize and draft plans; consequential actions require explicit human approval and are not executed automatically. Handle service errors/empty output honestly.
 - Add realistic initial product state only in code/demo fixtures or a one-time seed that preserves existing edits. Do not imply that seeded contacts are real customers or that integrations/payments have been connected.
+- Keep the GitHub Pages app on the `bugdata-commits.github.io/bugdata-agentic-os-app/` base path, send signup confirmations back to that exact app path, and allow its origin through the Edge Function CORS policy. Build Pages with the correct BUGDATA Supabase URL and publishable key and the stable Edge Function URL, never values from another project, the retired Manus API, or a temporary Preview host.
 - Before the first application-code edit, TypeScript diagnostics must be registered and confirmed. This project already reports host-managed TypeScript diagnostics as registered.
 - Define the static page route manifest before starting the development server. Start the supplied `pnpm dev` service on its configured port 3000, verify the HTTP health endpoint and route manifest, and use the live Preview for the user's inspection.
-- Keep working code, migrations, and tests in the project; validate through managed diagnostics and the available `pnpm check`/build paths. Save a Manus checkpoint on canonical `origin/main` after the implementation is ready. Do not enable auto-publication or claim production publication unless confirmed.
+- Keep working code, Supabase migrations, and tests in the project; validate through managed diagnostics and `pnpm check`, `pnpm test`, and build paths. Save a Manus checkpoint on canonical `origin/main` before deploying the Edge Function. Do not enable auto-publication or claim production publication unless confirmed.
 
 ## Product and interaction decisions
 
@@ -37,11 +44,12 @@ Keep the interactive React/Express/tRPC application, sign-in, database, and Herm
 - `client/src/pages/`: dashboard and product module screens.
 - `client/src/components/`: shared navigation, command bar, status, table and dashboard components.
 - `client/src/index.css`: global design tokens, typography and responsive refinements.
-- `server/routers.ts`: tRPC procedure composition and authorization boundaries.
-- `server/`: Hermes endpoint, domain queries and HTTP routes.
-- `drizzle/schema.ts` and `drizzle/`: additive persistence schema and migrations.
+- `server/routers.ts`: local Preview tRPC procedure composition and authorization boundaries.
+- `server/`: local Preview Express server, Supabase domain queries and HTTP routes.
+- `supabase/functions/bugdata-api/`: production tRPC Fetch adapter, user-token verification, RLS-scoped Supabase operations, CORS, health status, and the optional server-side Hermes provider call.
+- `supabase/migrations/`: checked-in Supabase database setup, including the authenticated first-workspace bootstrap function; `drizzle/` remains legacy and is not dropped.
 - `shared/`: data contracts/constants shared across client and server.
-- `public/manus-routes.json`: static declared page routes.
+- `client/public/manus-routes.json`: static Pages route manifest; Express Preview also exposes the same complete routes at `/manus-routes.json`.
 - `plan.md` and `TODO.md`: design/build decisions and feature delivery state.
 
 ## Design direction

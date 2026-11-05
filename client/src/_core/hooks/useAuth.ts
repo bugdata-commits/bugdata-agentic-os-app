@@ -1,7 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { supabase } from "@/lib/supabase";
 import type { AuthError, Session } from "@supabase/supabase-js";
-import type { AppUser } from "@shared/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type UseAuthOptions = {
@@ -10,7 +9,6 @@ type UseAuthOptions = {
 };
 
 export function useAuth(_options?: UseAuthOptions) {
-  const staticPages = typeof window !== "undefined" && window.location.hostname.endsWith("github.io");
   const utils = trpc.useUtils();
   const [session, setSession] = useState<Session | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
@@ -36,7 +34,7 @@ export function useAuth(_options?: UseAuthOptions) {
   }, [utils]);
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
-    enabled: Boolean(session) && !staticPages,
+    enabled: Boolean(session),
     retry: false,
     refetchOnWindowFocus: false,
   });
@@ -69,7 +67,8 @@ export function useAuth(_options?: UseAuthOptions) {
 
   const signUp = useCallback(async (email: string, password: string, name: string) => {
     setAuthError(null);
-    const result = await supabase.auth.signUp({ email, password, options: { data: { full_name: name } } });
+    const redirectTo = new URL(import.meta.env.BASE_URL, window.location.origin).toString();
+    const result = await supabase.auth.signUp({ email, password, options: { data: { full_name: name }, emailRedirectTo: redirectTo } });
     if (result.error) {
       setAuthError(result.error);
       throw result.error;
@@ -78,22 +77,14 @@ export function useAuth(_options?: UseAuthOptions) {
     return result.data;
   }, []);
 
-  const staticUser: AppUser | null = session?.user ? {
-    id: session.user.id,
-    openId: session.user.id,
-    name: typeof session.user.user_metadata?.full_name === "string" ? session.user.user_metadata.full_name : session.user.email ?? null,
-    email: session.user.email ?? null,
-    role: session.user.app_metadata?.role === "admin" ? "admin" : "user",
-  } : null;
-
   return useMemo(() => ({
-    user: meQuery.data ?? (staticPages ? staticUser : null),
-    loading: sessionLoading || (!staticPages && Boolean(session && meQuery.isLoading)),
+    user: meQuery.data ?? null,
+    loading: sessionLoading || Boolean(session && meQuery.isLoading),
     error: authError ?? meQuery.error ?? null,
-    isAuthenticated: Boolean(session && (staticPages ? staticUser : meQuery.data)),
+    isAuthenticated: Boolean(session && meQuery.data),
     signIn,
     signUp,
     logout,
     refresh: () => meQuery.refetch(),
-  }), [authError, logout, meQuery.data, meQuery.error, meQuery.isLoading, meQuery.refetch, session, sessionLoading, signIn, signUp, staticPages, staticUser]);
+  }), [authError, logout, meQuery.data, meQuery.error, meQuery.isLoading, meQuery.refetch, session, sessionLoading, signIn, signUp]);
 }

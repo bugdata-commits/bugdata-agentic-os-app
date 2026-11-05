@@ -1,12 +1,12 @@
 import { createClient, type User as SupabaseUser } from "@supabase/supabase-js";
 import type { Request } from "express";
 import type { AppUser } from "@shared/types";
+import { SUPABASE_PROJECT_URL, SUPABASE_PUBLISHABLE_KEY } from "../../shared/supabaseConfig";
 
 function getConfig() {
-  const url = process.env.SUPABASE_URL ?? "";
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? process.env.SUPABASE_KEY ?? "";
-  if (!url || !key) return null;
-  return { url, key };
+  const url = process.env.SUPABASE_URL?.trim() || SUPABASE_PROJECT_URL;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim() || SUPABASE_PUBLISHABLE_KEY;
+  return url && key ? { url, key } : null;
 }
 
 export function getSupabaseAccessToken(req: Request) {

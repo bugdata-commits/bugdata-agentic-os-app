@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { supabase } from "./lib/supabase";
+import { SUPABASE_PUBLISHABLE_KEY } from "@shared/supabaseConfig";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -22,10 +23,13 @@ const trpcClient = trpc.createClient({
       transformer: superjson,
       async headers() {
         const { data } = await supabase.auth.getSession();
-        return data.session?.access_token ? { Authorization: `Bearer ${data.session.access_token}` } : {};
+        return {
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          ...(data.session?.access_token ? { Authorization: `Bearer ${data.session.access_token}` } : {}),
+        };
       },
       fetch(input, init) {
-        return globalThis.fetch(input, { ...(init ?? {}), credentials: "include" }).then(response => {
+        return globalThis.fetch(input, { ...(init ?? {}), credentials: "omit" }).then(response => {
           if (response.status === 401) window.dispatchEvent(new Event("bugdata:auth-expired"));
           return response;
         });

@@ -46,7 +46,7 @@ const moduleDetails: Record<string, { eyebrow: string; title: string; intro: str
   "/analytics": { eyebrow: "BUSINESS SIGNAL / 03", title: "Turn activity into a clear next move.", intro: "The Analytics Agent is designed to connect pipeline, campaign, and revenue signals. This workspace begins with your own real records—no sample customers or invented metrics.", icon: BarChart3, features: ["Pipeline health", "Campaign performance", "Recommended next actions"], action: "Ask Hermes for an analysis" },
   "/commerce": { eyebrow: "REVENUE SYSTEMS / 04", title: "Build an offer worth saying yes to.", intro: "Map services, digital products, courses, memberships, subscriptions, and affiliate programs as your business grows. No payment processor or checkout is connected yet.", icon: Layers3, features: ["Offers and digital products", "Subscriptions and memberships", "Courses and affiliate programs"], action: "Draft an offer" },
   "/integrations": { eyebrow: "CONNECTED BUSINESS / 05", title: "Your tools should work as one.", intro: "Connect email, WhatsApp, calendars, payment providers, webhooks, and external business services when each integration is configured and secured.", icon: Globe2, features: ["Email and messaging", "Calendars and scheduling", "Payments, webhooks, and external services"], action: "Review connections" },
-  "/settings": { eyebrow: "WORKSPACE / SETTINGS", title: "Your business. Your rules.", intro: "Manage your signed-in workspace and keep human oversight at the center of agent execution.", icon: ShieldCheck, features: ["Private Manus account sign-in", "Workspace-scoped CRM records", "Reviewable approval history"], action: "Workspace controls" },
+  "/settings": { eyebrow: "WORKSPACE / SETTINGS", title: "Your business. Your rules.", intro: "Manage your signed-in workspace and keep human oversight at the center of agent execution.", icon: ShieldCheck, features: ["Supabase Auth account sign-in", "Workspace-scoped CRM records", "Reviewable approval history"], action: "Workspace controls" },
 };
 
 function initials(name: string) {
@@ -82,7 +82,7 @@ function EmptyState({ icon: Icon, title, description, action }: { icon: typeof U
   return <div className="empty-state"><div className="empty-icon"><Icon size={20} /></div><h3>{title}</h3><p>{description}</p>{action}</div>;
 }
 
-function OverviewPage({ data, isLoading, onRefresh }: Pick<PageProps, "data" | "isLoading" | "onRefresh">) {
+function OverviewPage({ data, isLoading, onRefresh, hermesConfigured }: Pick<PageProps, "data" | "isLoading" | "onRefresh"> & { hermesConfigured: boolean }) {
   const [, setLocation] = useLocation();
   const firstName = (data.workspace.name?.split(/\s+/)[0] || "there").replace(/[’']s$/i, "");
   const pending = data.approvals.filter(item => item.status === "pending");
@@ -126,7 +126,7 @@ function OverviewPage({ data, isLoading, onRefresh }: Pick<PageProps, "data" | "
     <section className="dashboard-lower-grid">
       <article className="panel agent-presence-panel">
         <PanelTitle eyebrow="AGENT NETWORK" title="Your team, on standby" action={<button className="quiet-action" onClick={() => setLocation("/agents")}>Meet your agents <ArrowRight size={14} /></button>} />
-        <div className="agent-presence-list">{agentRoster.slice(0, 4).map((agent, index) => { const Icon = agent.icon; return <div className="agent-presence" key={agent.name}><span className={`agent-avatar agent-${agent.accent}`}><Icon size={15} /></span><span className="agent-presence-name"><strong>{agent.name}</strong><small>{agent.role}</small></span><span className={`agent-state ${index === 0 ? "agent-state-ready" : ""}`}><i />{index === 0 ? "READY" : "STANDBY"}</span></div>; })}</div>
+        <div className="agent-presence-list">{agentRoster.slice(0, 4).map((agent, index) => { const Icon = agent.icon; const status = index === 0 ? (hermesConfigured ? "READY" : "SETUP REQUIRED") : "STANDBY"; return <div className="agent-presence" key={agent.name}><span className={`agent-avatar agent-${agent.accent}`}><Icon size={15} /></span><span className="agent-presence-name"><strong>{agent.name}</strong><small>{agent.role}</small></span><span className={`agent-state ${hermesConfigured && index === 0 ? "agent-state-ready" : ""}`}><i />{status}</span></div>; })}</div>
       </article>
       <article className="panel activity-panel">
         <PanelTitle eyebrow="RUN LOG" title="Recent activity" action={<button className="icon-button panel-more" aria-label="More activity"><MoreHorizontal size={18} /></button>} />
@@ -168,13 +168,17 @@ function CRMPage({ data, onRefresh, createLead, updateLead }: Pick<PageProps, "d
   </div>;
 }
 
-function HermesPanel({ askHermes, createApproval }: Pick<PageProps, "askHermes" | "createApproval">) {
+function HermesPanel({ askHermes, createApproval, hermesConfigured }: Pick<PageProps, "askHermes" | "createApproval"> & { hermesConfigured: boolean }) {
   const [prompt, setPrompt] = useState("");
   const [messages, setMessages] = useState<HermesMessage[]>([{ role: "assistant", content: "I’m Hermes, your orchestration agent. I can help you think through sales, marketing, and day-to-day operations. I can draft the next move; you stay in charge of anything that changes your business." }]);
   const suggestions = ["How should I follow up with a new lead?", "Help me plan a simple lead-generation campaign.", "What should I set up first in my workspace?"];
   async function sendMessage(value = prompt) {
     const text = value.trim();
     if (!text || askHermes.isPending) return;
+    if (!hermesConfigured) {
+      setMessages(current => [...current, { role: "assistant", content: "Hermes is not active yet. The workspace owner must configure an AI provider key in Supabase Function secrets before the assistant can respond.", isError: true }]);
+      return;
+    }
     setPrompt("");
     setMessages(current => [...current, { role: "user", content: text }]);
     try {
@@ -191,19 +195,19 @@ function HermesPanel({ askHermes, createApproval }: Pick<PageProps, "askHermes" 
     createApproval.mutate({ title: "Hermes draft for review", description: lastReply, agent: "Hermes" }, { onSuccess: () => toast.success("Draft added to your approval queue"), onError: error => toast.error(error.message) });
   }
   return <article className="panel hermes-panel">
-    <div className="hermes-header"><span className="hermes-orb"><Sparkles size={18} /></span><div><div className="hermes-title-line"><h2>Talk to Hermes</h2><span className="agent-state agent-state-ready"><i /> READY</span></div><p>Your orchestration agent · Built-in AI</p></div><span className="hermes-header-mark">H / 01</span></div>
-    <div className="hermes-safety"><ShieldCheck size={15} /><span>Hermes can reason and draft. It cannot send, spend, or make changes without an explicit review step.</span></div>
+    <div className="hermes-header"><span className="hermes-orb"><Sparkles size={18} /></span><div><div className="hermes-title-line"><h2>Talk to Hermes</h2><span className={`agent-state ${hermesConfigured ? "agent-state-ready" : ""}`}><i />{hermesConfigured ? "READY" : "SETUP REQUIRED"}</span></div><p>Your orchestration agent · {hermesConfigured ? "AI provider connected" : "AI provider not configured"}</p></div><span className="hermes-header-mark">H / 01</span></div>
+    <div className="hermes-safety"><ShieldCheck size={15} /><span>{hermesConfigured ? "Hermes can reason and draft. It cannot send, spend, or make changes without an explicit review step." : "Hermes stays disabled until the workspace owner configures a provider key in Supabase Function secrets."}</span></div>
     <div className="chat-log" aria-live="polite">{messages.map((message, index) => <div className={`chat-message chat-${message.role} ${message.isError ? "chat-error" : ""}`} key={`${index}-${message.role}`}><span className={`chat-avatar ${message.role === "assistant" ? "chat-avatar-agent" : ""}`}>{message.role === "assistant" ? <Sparkles size={13} /> : "Y"}</span><div><small>{message.role === "assistant" ? "HERMES" : "YOU"}</small><p>{message.content}</p></div></div>)}{askHermes.isPending && <div className="chat-message chat-assistant"><span className="chat-avatar chat-avatar-agent"><Sparkles size={13} /></span><div><small>HERMES</small><p className="thinking-dots"><i /><i /><i /></p></div></div>}</div>
-    <form className="command-composer" onSubmit={event => { event.preventDefault(); void sendMessage(); }}><textarea aria-label="Ask Hermes" placeholder="Tell Hermes what you're working on…" rows={2} maxLength={1600} value={prompt} onChange={event => setPrompt(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} /><div className="composer-footer"><span>Enter to send · Shift + Enter for a new line</span><button type="submit" aria-label="Send to Hermes" disabled={!prompt.trim() || askHermes.isPending}><Send size={16} /></button></div></form>
-    {!messages.some(message => message.role === "user") && <div className="suggestion-list">{suggestions.map(item => <button key={item} onClick={() => void sendMessage(item)}>{item}<ArrowRight size={13} /></button>)}</div>}
+    <form className="command-composer" onSubmit={event => { event.preventDefault(); void sendMessage(); }}><textarea aria-label="Ask Hermes" placeholder={hermesConfigured ? "Tell Hermes what you're working on…" : "Configure an AI provider to activate Hermes"} rows={2} maxLength={1600} value={prompt} onChange={event => setPrompt(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} /><div className="composer-footer"><span>Enter to send · Shift + Enter for a new line</span><button type="submit" aria-label="Send to Hermes" disabled={!hermesConfigured || !prompt.trim() || askHermes.isPending}><Send size={16} /></button></div></form>
+    {!messages.some(message => message.role === "user") && <div className="suggestion-list">{suggestions.map(item => <button key={item} disabled={!hermesConfigured} onClick={() => void sendMessage(item)}>{item}<ArrowRight size={13} /></button>)}</div>}
     {messages.some(message => message.role === "user") && lastReply && <div className="draft-action"><span><ShieldCheck size={14} /> Make a review item from this draft?</span><button onClick={saveDraft} disabled={createApproval.isPending}>{createApproval.isPending ? "Saving…" : "Add to approvals"}</button></div>}
   </article>;
 }
 
-function AgentsPage({ askHermes, createApproval }: Pick<PageProps, "askHermes" | "createApproval">) {
-  return <div className="page-stack"><section className="module-heading"><div><div className="eyebrow"><span className="eyebrow-mark">03</span> AGENT NETWORK / HERMES</div><h1>Meet your team.</h1><p>Specialists coordinated around your goals—not five more chat windows.</p></div><span className="platform-status"><span className="status-pip" /> PLATFORM AI AVAILABLE</span></section>
-    <section className="agent-roster-grid">{agentRoster.map((agent, index) => { const Icon = agent.icon; return <article className={`agent-card ${index === 0 ? "agent-card-featured" : ""}`} key={agent.name}><div className="agent-card-top"><span className={`agent-avatar agent-avatar-large agent-${agent.accent}`}><Icon size={18} /></span><span className={`agent-state ${index === 0 ? "agent-state-ready" : ""}`}><i />{agent.status}</span></div><span className="agent-role">{agent.role.toUpperCase()}</span><h2>{agent.name}</h2><p>{agent.description}</p><div className="agent-card-footer"><span>{index === 0 ? "COMMAND / COORDINATE" : "SPECIALIST / ON REQUEST"}</span>{index === 0 && <Sparkles size={15} />}</div></article>; })}</section>
-    <HermesPanel askHermes={askHermes} createApproval={createApproval} />
+function AgentsPage({ askHermes, createApproval, hermesConfigured }: Pick<PageProps, "askHermes" | "createApproval"> & { hermesConfigured: boolean }) {
+  return <div className="page-stack"><section className="module-heading"><div><div className="eyebrow"><span className="eyebrow-mark">03</span> AGENT NETWORK / HERMES</div><h1>Meet your team.</h1><p>Specialists coordinated around your goals—not five more chat windows.</p></div><span className="platform-status"><span className="status-pip" /> {hermesConfigured ? "HERMES AI READY" : "HERMES SETUP REQUIRED"}</span></section>
+    <section className="agent-roster-grid">{agentRoster.map((agent, index) => { const Icon = agent.icon; const status = index === 0 ? (hermesConfigured ? "READY" : "SETUP REQUIRED") : agent.status; return <article className={`agent-card ${index === 0 ? "agent-card-featured" : ""}`} key={agent.name}><div className="agent-card-top"><span className={`agent-avatar agent-avatar-large agent-${agent.accent}`}><Icon size={18} /></span><span className={`agent-state ${index === 0 && hermesConfigured ? "agent-state-ready" : ""}`}><i />{status}</span></div><span className="agent-role">{agent.role.toUpperCase()}</span><h2>{agent.name}</h2><p>{agent.description}</p><div className="agent-card-footer"><span>{index === 0 ? "COMMAND / COORDINATE" : "SPECIALIST / ON REQUEST"}</span>{index === 0 && <Sparkles size={15} />}</div></article>; })}</section>
+    <HermesPanel askHermes={askHermes} createApproval={createApproval} hermesConfigured={hermesConfigured} />
   </div>;
 }
 
@@ -256,8 +260,9 @@ function ExpansionPage({ path, data, askHermes }: { path: string } & Pick<PagePr
 
 export default function Home({ user, onLogout }: { user: AppUser; onLogout: () => void | Promise<void> }) {
   const [location] = useLocation();
-  const staticPages = typeof window !== "undefined" && window.location.hostname.endsWith("github.io");
-  const snapshot = trpc.workspace.snapshot.useQuery(undefined, { retry: false, enabled: !staticPages });
+  const snapshot = trpc.workspace.snapshot.useQuery(undefined, { retry: false });
+  const hermesStatus = trpc.agent.status.useQuery(undefined, { retry: false });
+  const hermesConfigured = hermesStatus.data?.hermesConfigured ?? false;
   const utils = trpc.useUtils();
   const onRefresh = () => { void utils.workspace.snapshot.invalidate(); };
   const createLead = trpc.workspace.createLead.useMutation({ onSuccess: onRefresh });
@@ -265,10 +270,7 @@ export default function Home({ user, onLogout }: { user: AppUser; onLogout: () =
   const createApproval = trpc.workspace.createApproval.useMutation({ onSuccess: onRefresh });
   const decideApproval = trpc.workspace.decideApproval.useMutation({ onSuccess: onRefresh });
   const askHermes = trpc.agent.askHermes.useMutation();
-  const data = snapshot.data ?? (staticPages ? {
-    workspace: { id: "static", owner_id: user.id, name: `${user.name || "Your"}'s workspace`, slug: "static", plan: "free", created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-    leads: [], approvals: [], activities: [],
-  } as Snapshot : undefined);
+  const data = snapshot.data;
   const displayName = user.name?.trim() || user.email?.split("@")[0] || "Workspace owner";
   const pendingCount = data?.approvals.filter(item => item.status === "pending").length ?? 0;
 
@@ -278,14 +280,14 @@ export default function Home({ user, onLogout }: { user: AppUser; onLogout: () =
   const props: PageProps = { data, isLoading: snapshot.isLoading, onRefresh, createLead, updateLead, createApproval, decideApproval, askHermes };
   let content: ReactNode;
   switch (location) {
-    case "/": content = <OverviewPage data={data} isLoading={snapshot.isLoading} onRefresh={onRefresh} />; break;
+    case "/": content = <OverviewPage data={data} isLoading={snapshot.isLoading} onRefresh={onRefresh} hermesConfigured={hermesConfigured} />; break;
     case "/crm": content = <CRMPage data={data} onRefresh={onRefresh} createLead={createLead} updateLead={updateLead} />; break;
-    case "/agents": content = <AgentsPage askHermes={askHermes} createApproval={createApproval} />; break;
+    case "/agents": content = <AgentsPage askHermes={askHermes} createApproval={createApproval} hermesConfigured={hermesConfigured} />; break;
     case "/approvals": content = <ApprovalsPage data={data} decideApproval={decideApproval} />; break;
     case "/workflows": content = <WorkflowsPage data={data} askHermes={askHermes} />; break;
     case "/funnels": case "/marketing": case "/automations": case "/analytics": case "/commerce": case "/courses": case "/bookings": case "/affiliates": content = <GrowthSuitePage path={location} data={data} />; break;
     case "/integrations": case "/settings": content = <ExpansionPage path={location} data={data} askHermes={askHermes} />; break;
-    default: content = <OverviewPage data={data} isLoading={snapshot.isLoading} onRefresh={onRefresh} />;
+    default: content = <OverviewPage data={data} isLoading={snapshot.isLoading} onRefresh={onRefresh} hermesConfigured={hermesConfigured} />;
   }
   void props;
 

@@ -1,0 +1,9 @@
+{
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.118.0",
+    "@trpc/server": "npm:@trpc/server@11.6.0",
+    "@trpc/server/adapters/fetch": "npm:@trpc/server@11.6.0/adapters/fetch",
+    "superjson": "npm:superjson@1.13.3",
+    "zod": "npm:zod@4.1.12"
+  }
+}

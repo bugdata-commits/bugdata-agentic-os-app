@@ -11,6 +11,8 @@ describe("current platform integration", () => {
   it("exposes only named public runtime configuration", () => {
     const env = { MANUS_PROJECT_ID: "project-test", MANUS_API_KEY: "server-only-test", MANUS_JWT_SECRET: "signing-only-test", DATABASE_URL: "db-only-test", MANUS_API_BROWSER_KEY: "public-browser-test", MANUS_ANALYTICS_ENDPOINT: "https://analytics.example", MANUS_ANALYTICS_WEBSITE_ID: "site-test" };
     expect(publicPlatformConfig(env)).toMatchObject({ projectId: "project-test", apiBrowserKey: "public-browser-test" });
+    expect(publicPlatformConfig({ ...env, BUGDATA_API_URL: "https://supabase.example/functions/v1/bugdata-api" })).toMatchObject({ projectId: "", oauthPortalUrl: "", apiBrowserKey: "" });
+    expect(publicPlatformConfig({ ...env, GITHUB_PAGES: "1" })).toMatchObject({ apiUrl: "https://maadakjelhkbqgkbwxsy.supabase.co/functions/v1/bugdata-api", projectId: "", apiBrowserKey: "" });
     const script = publicPlatformScript(env);
     for (const value of [env.MANUS_API_KEY, env.MANUS_JWT_SECRET, env.DATABASE_URL]) expect(script).not.toContain(value);
     const appended: unknown[] = [];

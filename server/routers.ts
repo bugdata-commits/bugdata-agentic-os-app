@@ -1,7 +1,5 @@
-import { COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { getSessionCookieOptions } from "./_core/cookies";
 import { ENV } from "./_core/env";
 import { systemRouter } from "./_core/systemRouter";
 import { createApproval, createFunnel, createLead, decideApproval, getFunnels, getWorkspaceSnapshot, updateLeadStatus } from "./db";
@@ -16,11 +14,6 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return { success: true } as const;
-    }),
   }),
   workspace: router({
     snapshot: protectedProcedure.query(({ ctx }) => getWorkspaceSnapshot(ctx.user.id, ctx.user.name, ctx.supabaseAccessToken!)),
@@ -58,6 +51,7 @@ export const appRouter = router({
     })).mutation(({ ctx, input }) => decideApproval(ctx.user.id, ctx.user.name, input.id, input.status, ctx.supabaseAccessToken!)),
   }),
   agent: router({
+    status: protectedProcedure.query(() => ({ hermesConfigured: Boolean(ENV.forgeApiUrl && ENV.forgeApiKey) })),
     askHermes: protectedProcedure.input(z.object({ prompt: z.string().trim().min(1).max(1600) })).mutation(async ({ ctx, input }) => {
       const now = Date.now();
       const prior = requestWindow.get(ctx.user.id);

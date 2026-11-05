@@ -1,5 +1,6 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 import type { InsertUser, User } from "../drizzle/schema";
+import { SUPABASE_PROJECT_URL, SUPABASE_PUBLISHABLE_KEY } from "../shared/supabaseConfig";
 
 export type LeadStatus = "new" | "qualified" | "proposal" | "won" | "lost";
 export type ApprovalStatus = "pending" | "approved" | "rejected";
@@ -78,18 +79,10 @@ export type Funnel = {
   steps: FunnelStep[];
 };
 
-let serviceClient: SupabaseClient | null = null;
-
-function getSupabaseClient(accessToken?: string) {
-  const url = process.env.SUPABASE_URL ?? "";
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
-  const publishableKey = process.env.SUPABASE_ANON_KEY ?? process.env.SUPABASE_KEY ?? "";
-  if (!url || (!serviceRoleKey && !publishableKey)) throw new Error("Supabase is not configured. Set SUPABASE_URL and a server key.");
-  if (serviceRoleKey) {
-    if (serviceClient) return serviceClient;
-    serviceClient = createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
-    return serviceClient;
-  }
+function getSupabaseClient(accessToken: string) {
+  const url = process.env.SUPABASE_URL?.trim() || SUPABASE_PROJECT_URL;
+  const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim() || SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !publishableKey) throw new Error("Supabase is not configured.");
   if (!accessToken) throw new Error("Supabase access token is required for an RLS-scoped request.");
   return createClient(url, publishableKey, { global: { headers: { Authorization: `Bearer ${accessToken}` } }, auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
 }
@@ -141,16 +134,11 @@ function mapFunnel(row: any, steps: any[] = []): Funnel {
 
 async function ensureWorkspace(ownerId: string, ownerName: string | null | undefined, accessToken: string) {
   const supabase = getSupabaseClient(accessToken);
-  const existing = await supabase.from("workspaces").select("*").eq("owner_id", ownerId).order("created_at", { ascending: true }).limit(1).maybeSingle();
-  assertNoError(existing.error, "Workspace could not be loaded");
-  if (existing.data) return existing.data as AppWorkspace;
-
   const name = ownerName?.trim() ? `${ownerName.trim().split(/\s+/)[0]}'s workspace` : "My workspace";
-  const baseSlug = slugify(name);
-  const created = await supabase.from("workspaces").insert({ owner_id: ownerId, name, slug: `${baseSlug}-${ownerId.slice(0, 8)}` }).select("*").single();
-  assertNoError(created.error, "Workspace could not be created");
-  if (!created.data) throw new Error("Workspace could not be created");
-  return created.data as AppWorkspace;
+  const result = await supabase.rpc("bugdata_ensure_workspace_for_current_user", { workspace_name: name });
+  assertNoError(result.error, "Workspace could not be loaded or created");
+  if (!result.data) throw new Error("Workspace could not be loaded or created");
+  return result.data as AppWorkspace;
 }
 
 async function addActivity(workspaceId: string, actor: string, description: string, accessToken: string) {
