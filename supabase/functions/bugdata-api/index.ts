@@ -434,7 +434,7 @@ const appRouter = t.router({
 Deno.serve(async (request: Request) => {
   const url = new URL(request.url);
   const cors = corsHeaders(request);
-  if (request.method === "OPTIONS") return new Response("ok", { status: 204, headers: cors });
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
 
   const path = url.pathname;
   if (request.method === "GET" && path.endsWith("/health")) {
